@@ -14,9 +14,10 @@
 #include <variant>
 #include <string_view>
 #include <nameof.hpp>
-#include <magic_enum.hpp>
 #include <functional>
 #include <algorithm>
+
+#include <magic_enum/magic_enum.hpp>
 #include "serdepp/meta.hpp"
 #include "serdepp/exception.hpp"
 

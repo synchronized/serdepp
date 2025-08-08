@@ -11,8 +11,9 @@
 #include <type_traits>
 #include <utility>
 #include <string_view>
-#include <magic_enum.hpp>
 #include <memory>
+
+#include <magic_enum/magic_enum.hpp>
 
 #ifndef __SERDEPP_META_HPP__
 #define __SERDEPP_META_HPP__

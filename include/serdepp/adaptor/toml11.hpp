@@ -18,7 +18,7 @@ namespace serde {
         static bool is_float(Format& format) { return format.is_floating(); }
         static bool is_string(Format& format) { return format.is_string(); }
         static bool is_bool(Format& format) { return format.is_boolean(); }
-        static bool is_null(Format& format) { return format.is_uninitialized(); }
+        static bool is_null(Format& format) { return format.is_empty(); }
         static bool is_struct(Format& format) { return format.is_table(); }
     };
 

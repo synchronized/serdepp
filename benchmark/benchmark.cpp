@@ -101,8 +101,7 @@ struct test
     int i;
     std::vector<std::string> vec;
     std::map<std::string, std::string> sm;
-    template<typename C, template<typename ...> class M, template<typename ...> class A>
-    void from_toml(const toml::basic_value<C, M, A>& v)
+    void from_toml(const toml::value& v)
     {
         this->str = toml::find<std::string>(v, "str");
         this->i   = toml::find<int>(v, "i");
@@ -113,7 +112,12 @@ struct test
 
     toml::value into_toml() const // you need to mark it const.
     {
-        return toml::value{{"str", this->str}, {"i", this->i}, {"vec", this->vec}, {"sm", this->sm}};
+        return toml::value(toml::table{
+            {"str", this->str}, 
+            {"i", this->i}, 
+            {"vec", this->vec}, 
+            {"sm", this->sm},
+        });
     }
 };
 } // ext
