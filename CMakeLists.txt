@@ -5,6 +5,12 @@ if (NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
 endif()
 
+add_compile_options("$<$<C_COMPILER_ID:MSVC>:/utf-8>")
+add_compile_options("$<$<CXX_COMPILER_ID:MSVC>:/utf-8>")
+if(MSVC)
+    add_compile_options(/bigobj)
+endif()
+
 project(serdepp VERSION 0.1.4 LANGUAGES C CXX)
 
 #find_cppkg(Catch2 3.5.0  MODULE Catch2::Catch2WithMain TYPE lib OPTIONAL OFF)
@@ -28,20 +34,38 @@ find_package(nlohmann_json)
 find_package(toml11)
 find_package(yaml-cpp)
 
+add_subdirectory(3rd)
 
-add_library(serdepp STATIC)
-target_include_directories(serdepp PUBLIC include)
-target_sources(serdepp PRIVATE src/to_static.cpp)
-target_link_libraries(serdepp PRIVATE magic_enum::magic_enum)
-target_link_libraries(serdepp PRIVATE nameof::nameof)
-target_link_libraries(serdepp PUBLIC fmt::fmt-header-only)
+option(SERDEPP_BUILD_TESTING "Build the unit tests of serdepp" OFF)
+option(SERDEPP_BUILD_EXAMPLES "Build the examples of serdepp" OFF)
+option(SERDEPP_BUILD_BENCHMARKS "Enable this to build the benchmarks" OFF)
+
+if (PROJECT_IS_TOP_LEVEL)
+    set(SERDEPP_BUILD_TESTING ON)
+    set(SERDEPP_BUILD_EXAMPLES ON)
+    set(SERDEPP_BUILD_BENCHMARKS ON)
+endif()
+
+set(target_name serdepp)
+message("target_name: ${target_name}")
+add_library(${target_name} STATIC)
+add_library(${PROJECT_NAME}::${target_name} ALIAS ${target_name})
+target_include_directories(${target_name} PUBLIC include)
+target_sources(${target_name} PRIVATE src/to_static.cpp)
+target_link_libraries(${target_name} PRIVATE magic_enum::magic_enum)
+target_link_libraries(${target_name} PRIVATE nameof::nameof)
+target_link_libraries(${target_name} PUBLIC fmt::fmt-header-only)
+set(target_name "")
+
+
 
 if(SERDEPP_BUILD_TESTING)
 
     file(GLOB testsourcelist tests/*.cpp)
-
     set(target_name unittest)
+    message("target_name: ${target_name}")
     add_executable(${target_name})
+    add_executable(${PROJECT_NAME}::${target_name} ALIAS ${target_name})
     target_sources(${target_name} PRIVATE ${testsourcelist})
     target_include_directories(${target_name} PUBLIC tests)
     target_link_libraries(${target_name} PRIVATE serdepp)
@@ -50,19 +74,24 @@ if(SERDEPP_BUILD_TESTING)
     target_link_libraries(${target_name} PRIVATE RapidJSON rapidjson)
     target_link_libraries(${target_name} PRIVATE toml11::toml11)
     target_link_libraries(${target_name} PRIVATE yaml-cpp::yaml-cpp)
+    set(target_name "")
 
 endif()
 
 if(SERDEPP_BUILD_EXAMPLES)
 
+    #rttr provides CMake targets:
+    # this is heuristically generated, and may not be correct
+    #find_package(rttr CONFIG REQUIRED)
+    #target_link_libraries(main PRIVATE RTTR::Core)
     file(GLOB examplesourcelist examples/*.cpp)
 
     foreach(file_full_name ${examplesourcelist})
         get_filename_component(file_name ${file_full_name} NAME_WLE)
-        set(target_name "serdepp_example_${file_name}")
+        set(target_name "example_${file_name}")
         message("target_name: ${target_name}")
-
         add_executable(${target_name})
+        add_executable(${PROJECT_NAME}::${target_name} ALIAS ${target_name})
         target_sources(${target_name} PRIVATE ${file_full_name})
         target_include_directories(${target_name} PUBLIC examples)
         target_link_libraries(${target_name} PRIVATE serdepp)
@@ -71,6 +100,25 @@ if(SERDEPP_BUILD_EXAMPLES)
         target_link_libraries(${target_name} PRIVATE toml11::toml11)
         target_link_libraries(${target_name} PRIVATE yaml-cpp::yaml-cpp)
         target_link_libraries(${target_name} PRIVATE fmt::fmt)
+        target_link_libraries(${target_name} PRIVATE RTTR::Core)
+        if(MSVC)
+            target_compile_options(${target_name} PRIVATE "/bigobj")
+        endif()
+
+        # 将MySharedLib的DLL复制到MyApp的输出目录
+        add_custom_command(TARGET ${target_name} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "$<TARGET_FILE:RTTR::Core>"           # 源：DLL完整路径
+            "$<TARGET_FILE_DIR:${target_name}>"   # 目标：exe所在目录
+            COMMENT "Copying RTTR::Core DLL to executable directory"
+        )
+
+        #file(GLOB source_list examples/${file_name}/*.cpp)
+        #if(source_list)
+        #    target_sources(${target_name} PRIVATE ${source_list})
+        #endif()
+
+        set(target_name "")
 
     endforeach()
 
@@ -80,14 +128,13 @@ if(SERDEPP_BUILD_BENCHMARKS)
 
     file(GLOB benchmarksourcelist benchmark/*.cpp)
 
-    message("benchmarksourcelist: ${benchmarksourcelist}")
-
     foreach(file_full_name ${benchmarksourcelist})
         get_filename_component(file_name ${file_full_name} NAME_WLE)
-        set(target_name "serdepp_bench_${file_name}")
+        set(target_name "bench_${file_name}")
         message("target_name: ${target_name}")
 
         add_executable(${target_name})
+        add_executable(${PROJECT_NAME}::${target_name} ALIAS ${target_name})
         target_sources(${target_name} PRIVATE ${file_full_name})
         target_include_directories(${target_name} PRIVATE benchmark)
         target_link_libraries(${target_name} PRIVATE serdepp)
@@ -97,6 +144,7 @@ if(SERDEPP_BUILD_BENCHMARKS)
         target_link_libraries(${target_name} PRIVATE RapidJSON rapidjson)
         target_link_libraries(${target_name} PRIVATE toml11::toml11)
         target_link_libraries(${target_name} PRIVATE yaml-cpp::yaml-cpp)
+        set(target_name "")
 
     endforeach()
 

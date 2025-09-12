@@ -5,6 +5,7 @@
 
 #include <serdepp/serializer.hpp>
 #include <sstream>
+#include <iostream>
 
 namespace serde {
     class serde_sstream {
@@ -18,16 +19,20 @@ namespace serde {
         }
 
         inline std::string str() const {
-            std::string str;
-            if (members.size() == 1) {
-                str = members.front();
-            } else {
-                str = begin_ + str;
-                for (auto &it : members) { str.append(it + ", "); }
-                str.pop_back();
-                str.back() = end_;
+            if (members.size() == 0) {
+                return "";
             }
-            return str;
+            if (members.size() == 1) {
+                return members.front();
+            } 
+            std::stringstream s;
+            s << begin_;
+            s << members[0];
+            for (size_t i=1; i<members.size(); i++) { 
+                s << ", " << members[i]; 
+            }
+            s << end_;
+            return s.str();
         }
     private:
         std::vector<std::string> members;
