@@ -96,6 +96,7 @@ namespace serde
 
     namespace type {
         struct basic_t{};
+        struct poly_t {};
         struct seq_t {};
         struct map_t {};
         struct struct_t {};

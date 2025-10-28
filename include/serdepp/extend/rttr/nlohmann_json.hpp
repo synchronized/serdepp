@@ -131,6 +131,40 @@ namespace serde {
         }
     };
 
+    template <>
+    struct serde_adaptor<json, rttr::variant_polymoph_view, type::poly_t> {
+        using type_checker = serde_type_checker<json>;
+        using Container = rttr::variant_polymoph_view;
+        using E = rttr::variant;
+        inline static void from(json& s, std::string_view key, Container& container) {
+            auto& arr = key.empty() ? s : s.at(std::string{key});
+            if (!arr.is_object()) return;
+
+            json jtypename = arr["$typeName"];
+            if (!jtypename.is_string()) return;
+
+            json jvalue = arr["$content"];
+            if (!jvalue.is_object()) return;
+
+            std::string type_name;
+            type_name = arr["$typeName"].get_to(type_name);
+            if (!container.create(type_name)) return;
+
+            rttr::variant value = container.get_value();
+            deserialize_to(jvalue, value);
+        }
+        inline static void into(json& s, std::string_view key, const Container& data) {
+            if (!data.is_valid()) return;
+            json& arr = key.empty() ? s : s[std::string{key}];
+
+            std::string type_name = data.get_type_name();
+            rttr::variant value = data.get_value();
+            arr = json::object_t{
+                {"$typeName", serialize<json>(type_name)},
+                {"$content", serialize<json>(value)},
+            };
+        }
+    };
 
     template <>
     struct serde_adaptor<json, rttr::variant_sequential_view, type::seq_t> {

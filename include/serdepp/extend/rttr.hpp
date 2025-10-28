@@ -37,35 +37,50 @@ namespace serde {
             auto& wrapped_value = is_wrapped ? ext_wrapped_value : data;
             auto raw_type = wrapped_type.get_raw_type();
 
-
-            if (!data || serde_rttr_type_checker::is_basic(raw_type)) {
+            if (!data || serde_rttr_type_checker::is_basic(raw_type)) 
+            {
                 serde_adaptor<typename serde_ctx::Adaptor, rttr::variant, type::basic_t>::from(ctx.adaptor, key, data);
                 ctx.read();
+                return;
             }
 
-            else if (raw_type.is_sequential_container()) {
+            else if (raw_type.is_polymoph_container()) 
+            {
+                auto view = data.create_polymoph_view();
+                serde_adaptor<typename serde_ctx::Adaptor, rttr::variant_polymoph_view, type::poly_t>::from(ctx.adaptor, key, view);
+                ctx.read();
+                return;
+            }
+
+            else if (raw_type.is_sequential_container()) 
+            {
                 auto view = data.create_sequential_view();
                 serde_adaptor<typename serde_ctx::Adaptor, rttr::variant_sequential_view, type::seq_t>::from(ctx.adaptor, key, view);
                 ctx.read();
+                return;
             }
 
-            else if (raw_type.is_associative_container()) {
+            else if (raw_type.is_associative_container()) 
+            {
                 auto view = data.create_associative_view();
                 serde_adaptor<typename serde_ctx::Adaptor, rttr::variant_associative_view, type::map_t>::from(ctx.adaptor, key, view);
                 ctx.read();
-
+                return;
             } 
 
-            else if (raw_type.is_class()) {
+            else if (raw_type.is_class()) 
+            {
                 serde_adaptor<typename serde_ctx::Adaptor, rttr::variant, type::struct_t>::from(ctx.adaptor, key, data);
                 ctx.read();
-
+                return;
             } 
 
-            else {
-                throw serde::unimplemented_error("serde_serializer<rttr::variant, serde_ctx>::from()");
+            else if (!data) 
+            {
+                return;
             }
 
+            throw serde::unimplemented_error("serde_serializer<rttr::variant, serde_ctx>::from()");
         }
         constexpr inline static auto into(serde_ctx& ctx, const ValueType& data, std::string_view key) {
             auto data_type = data.get_type();
@@ -74,33 +89,50 @@ namespace serde {
             auto& wrapped_value = is_wrapped ? data.extract_wrapped_value() : data;
             auto raw_type = wrapped_type.get_raw_type();
 
-            if (raw_type.is_arithmetic() || raw_type.is_enumeration() || raw_type == rttr::type::get<std::string>()) {
+            if (raw_type.is_arithmetic() || raw_type.is_enumeration() || raw_type == rttr::type::get<std::string>()) 
+            {
                 serde_serializer<rttr::variant, serde_ctx, type::basic_t>::into(ctx, data, key);
+                return;
             }
 
-            else if (raw_type.is_sequential_container()) {
+            else if (raw_type.is_polymoph_container()) 
+            {
+                auto view = data.create_polymoph_view();
+                serde_adaptor<typename serde_ctx::Adaptor, rttr::variant_polymoph_view, type::poly_t>::into(ctx.adaptor, key, view);
+                ctx.read();
+                return;
+
+            }
+
+            else if (raw_type.is_sequential_container()) 
+            {
                 auto view = data.create_sequential_view();
                 serde_adaptor<typename serde_ctx::Adaptor, rttr::variant_sequential_view, type::seq_t>::into(ctx.adaptor, key, view);
                 ctx.read();
-
+                return;
             }
 
-            else if (raw_type.is_associative_container()) {
+            else if (raw_type.is_associative_container()) 
+            {
                 auto view = data.create_associative_view();
                 serde_adaptor<typename serde_ctx::Adaptor, rttr::variant_associative_view, type::map_t>::into(ctx.adaptor, key, view);
                 ctx.read();
-
+                return;
             } 
 
-            else if (raw_type.is_class()) {
+            else if (raw_type.is_class()) 
+            {
                 serde_adaptor<typename serde_ctx::Adaptor, rttr::variant, type::struct_t>::into(ctx.adaptor, key, data);
                 ctx.read();
-
+                return;
             } 
 
-            else {
-                throw serde::unimplemented_error("serde_serializer<rttr::variant, serde_ctx>::into()");
+            else if (!data) 
+            {
+                return;
             }
+
+            throw serde::unimplemented_error("serde_serializer<rttr::variant, serde_ctx>::into()");
         }
     };
 

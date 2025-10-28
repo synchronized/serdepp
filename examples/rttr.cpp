@@ -119,9 +119,82 @@ public:
     RTTR_ENABLE(Base)
 };
 
-namespace serde {
+class poly_base1 {
+public:
+    poly_base1() {}
+    poly_base1(const poly_base1& other) : val(other.val) {}
+    poly_base1(poly_base1&& other) : val(other.val) {}
+    poly_base1& operator=(const poly_base1& other) {
+        if (this == (void*)&other) {
+            return *this;
+        }
+        val = other.val;
+    }
+    poly_base1& operator=(poly_base1&& other) {
+        if (this == (void*)&other) {
+            return *this;
+        }
+        val = other.val;
+    }
 
-}
+    poly_base1(int val) : val(val) {}
+
+    int val{};
+    RTTR_ENABLE()
+};
+
+class poly_sub1 : public poly_base1 {
+public:
+    poly_sub1() : poly_base1() { }
+    poly_sub1(const poly_sub1& other) : poly_base1(other) {
+        sub_val = other.sub_val;
+    }
+    poly_sub1(poly_sub1&& other) {
+        val = other.val;
+        sub_val = other.sub_val;
+    }
+    poly_sub1& operator=(const poly_sub1& other) {
+        if (this == (void*)&other) {
+            return *this;
+        }
+        val = other.val;
+        sub_val = other.sub_val;
+    }
+    poly_sub1& operator=(poly_sub1&& other) {
+        if (this == (void*)&other) {
+            return *this;
+        }
+        val = other.val;
+        sub_val = other.sub_val;
+    }
+
+    poly_sub1(int val) {
+        this->val = val;
+    }
+
+    poly_sub1(int val, int sub_val) {
+        this->val = val;
+        this->sub_val = sub_val;
+    }
+
+    int sub_val{};
+    RTTR_ENABLE(poly_base1)
+};
+
+class poly_ptr {
+public:
+    poly_ptr() = default;
+    poly_ptr(const poly_ptr&) = default;
+    poly_ptr(poly_ptr&&) = default;
+    poly_ptr& operator=(const poly_ptr&) = default;
+    poly_ptr& operator=(poly_ptr&&) = default;
+
+    poly_ptr(rttr::polymoph_ptr<poly_base1> value_ptr) {
+        this->value_ptr = value_ptr;
+    }
+
+    rttr::polymoph_ptr<poly_base1> value_ptr;
+};
 
 using namespace rttr;
 RTTR_REGISTRATION
@@ -165,6 +238,23 @@ RTTR_REGISTRATION
         .property("pens", &Enum_Prop::pens)
         .property("namesByPens", &Enum_Prop::namesByPens);
 
+    registration::class_<poly_base1>("poly_base1")
+        .constructor<>()
+        .constructor<int>()
+        .property("val", &poly_base1::val);
+
+    registration::class_<poly_sub1>("poly_sub1")
+        .constructor<>()
+        .constructor<int>()
+        .constructor<int, int>()
+        .property("sub_val", &poly_sub1::sub_val);
+
+    rttr::type::register_wrapper_converter_for_base_classes<std::shared_ptr<poly_sub1>>();
+
+    registration::class_<poly_ptr>("poly_ptr")
+        .constructor<>()
+        .constructor<rttr::polymoph_ptr<poly_base1>>()
+        .property("value_ptr", &poly_ptr::value_ptr);
 }
 
 std::string str(nlohmann::json& doc) {
@@ -241,11 +331,16 @@ void test_serialize() {
         },
     };
 
+    poly_ptr pp{
+        rttr::polymoph_ptr<poly_base1>(poly_sub1(20, 21)),
+    };
+
     rttr::variant var1_1 = p;
     rttr::variant var1_2 = vp;
     rttr::variant var1_3 = mp;
     rttr::variant var1_4 = sp;
     rttr::variant var1_5 = ep;
+    rttr::variant var1_6 = pp;
 
     {
         Adapter adapter1_1 = serde::serialize<Adapter>(var1_1);
@@ -253,6 +348,7 @@ void test_serialize() {
         Adapter adapter1_3 = serde::serialize<Adapter>(var1_3);
         Adapter adapter1_4 = serde::serialize<Adapter>(var1_4);
         Adapter adapter1_5 = serde::serialize<Adapter>(var1_5);
+        Adapter adapter1_6 = serde::serialize<Adapter>(var1_6);
         fmt::print("-------------------------\n");
         fmt::print("adapter1_1 : {}\n", str(adapter1_1));
         fmt::print("-------------------------\n");
@@ -263,6 +359,8 @@ void test_serialize() {
         fmt::print("adapter1_4 : {}\n", str(adapter1_4));
         fmt::print("-------------------------\n");
         fmt::print("adapter1_5 : {}\n", str(adapter1_5));
+        fmt::print("-------------------------\n");
+        fmt::print("adapter1_6 : {}\n", str(adapter1_6));
         std::fflush(stdout);  // 强制刷新输出缓冲区
 
         rttr::variant var2_1 = rttr::type::get<Person>().create();
@@ -270,6 +368,7 @@ void test_serialize() {
         rttr::variant var2_3 = rttr::type::get<Map_Prop>().create();
         rttr::variant var2_4 = rttr::type::get<Set_Prop>().create();
         rttr::variant var2_5 = rttr::type::get<Enum_Prop>().create();
+        rttr::variant var2_6 = rttr::type::get<poly_ptr>().create();
 
         auto ep1 = var2_4.get_value<std::shared_ptr<Enum_Prop>>();
 
@@ -297,6 +396,11 @@ void test_serialize() {
         fmt::print("-------------------------\n");
         fmt::print("var2_5 : {}\n", var2_5);
         std::fflush(stdout);  // 强制刷新输出缓冲区
+
+        serde::deserialize_to(adapter1_6, var2_6);
+        fmt::print("-------------------------\n");
+        fmt::print("var2_6 : {}\n", var2_6);
+        std::fflush(stdout);  // 强制刷新输出缓冲区
     }
 
 }
@@ -310,7 +414,6 @@ int main(int argc, char *argv[])
         using Adapter = nlohmann::json;
         test_serialize<Adapter>();
     }
-
 
     if (true) {
         fmt::print("############# rapidjson ############\n");

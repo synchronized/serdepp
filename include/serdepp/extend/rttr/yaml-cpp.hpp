@@ -107,6 +107,47 @@ namespace serde {
         }
     };
 
+    template <>
+    struct serde_adaptor<yaml, rttr::variant_polymoph_view, type::poly_t> {
+        using type_checker = serde_type_checker<yaml>;
+        using Container = rttr::variant_polymoph_view;
+        using E = rttr::variant;
+        inline static void from(yaml& s, std::string_view key, Container& container) {
+
+            if(key.empty()) {
+                auto& table = s;
+                std::string type_name = table["$typeName"].Scalar();
+                if (!container.create(type_name)) return;
+
+                rttr::variant value = container.get_value();
+                deserialize_to(table["$content"], value);
+            } else {
+                auto table = s[std::string{key}];
+
+                std::string type_name = table["$typeName"].Scalar();
+                if (!container.create(type_name)) return;
+
+                rttr::variant value = container.get_value();
+                deserialize_to(table["$content"], value);
+            }
+        }
+        inline static void into(yaml& s, std::string_view key, const Container& data) {
+            if (!data.is_valid()) return;
+            if(key.empty()) {
+                auto& obj = s;
+                std::string type_name = data.get_type_name();
+                obj["$typeName"] = serialize<yaml>(type_name);
+                rttr::variant value = data.get_value();
+                obj["$content"] = serialize<yaml>(value);
+            } else {
+                auto obj = s[std::string{key}];
+                std::string type_name = data.get_type_name();
+                obj["$typeName"] = serialize<yaml>(type_name);
+                rttr::variant value = data.get_value();
+                obj["$content"] = serialize<yaml>(value);
+            }
+        }
+    };
 
     template <>
     struct serde_adaptor<yaml, rttr::variant_sequential_view, type::seq_t> {

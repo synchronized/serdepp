@@ -227,12 +227,58 @@ namespace serde {
     };
 
     template <>
+    struct serde_adaptor<rapidjson_type, rttr::variant_polymoph_view, type::poly_t> {
+        using Container = rttr::variant_polymoph_view;
+        using E = rttr::variant;
+        inline static void from(rapidjson_type& s, std::string_view key, Container& container) {
+            auto& table = key.empty() ? s : s[key.data()];
+            if(!table.IsObject()) { return; }
+
+            auto& a_type_name = table["$typeName"];
+            if (!a_type_name.IsString()) return;
+            std::string type_name(a_type_name.GetString(), a_type_name.GetStringLength());
+            if (type_name.size() == 0) { return; }
+
+            auto& a_value = table["$content"];
+            if (!a_value.IsObject()) { return; }
+            if (!container.create(type_name)) { return; }
+
+            rttr::variant value = container.get_value();
+            deserialize_to(a_value, value);
+        }
+        inline static void into(rapidjson_type& s, std::string_view key, const Container& data) {
+            using namespace rapidjson;
+            auto& alloc = s.GetAllocator();
+
+            Value map;
+            map.SetObject();
+            {
+                std::string type_name = data.get_type_name();
+                Value v(type_name.c_str(), type_name.length(), alloc);
+                map.AddMember("$typeName", v.Move(), alloc);
+            }
+            {
+                rttr::variant value = data.get_value();
+                Value v;
+                v.CopyFrom(serialize<rapidjson_type>(value), alloc);
+                map.AddMember("$content", v.Move(), alloc);
+            }
+            if(key.empty()) {
+                s.CopyFrom(map.Move(), alloc);
+            }else {
+                if(!s.IsObject()) s.SetObject();
+                s.AddMember(rapidjson::StringRef(key.data()), map.Move(), alloc);
+            } 
+        }
+    };
+
+    template <>
     struct serde_adaptor<rapidjson_type, rttr::variant_sequential_view, type::seq_t> {
         using Sequent = rttr::variant_sequential_view;
         using E = rttr::variant;
         inline static void from(rapidjson_type& s, std::string_view key, Sequent& seq) {
             auto& table = key.empty() ? s : s[key.data()];
-            if(!table.IsArray()) { table.SetArray(); }
+            if(!table.IsArray()) { return; }
             seq.set_size(table.Size());
             const rttr::type orig_value_type = seq.get_value_type();
             for (size_t i=0; i<table.Size(); i++) {
@@ -508,6 +554,28 @@ namespace serde {
 }
 
 namespace serde {
+
+    template <>
+    struct serde_adaptor<rapidjson_value, rttr::variant_polymoph_view, type::poly_t> {
+        using Container = rttr::variant_polymoph_view;
+        using E = rttr::variant;
+        inline static void from(rapidjson_value& s, std::string_view key, Container& container) {
+            auto& table = key.empty() ? s : s[key.data()];
+            if (!table.IsObject()) { return; }
+
+            auto& a_type_name = table["$typeName"];
+            if (!a_type_name.IsString()) return;
+            std::string type_name(a_type_name.GetString(), a_type_name.GetStringLength());
+            if (type_name.size() == 0) { return; }
+
+            auto& a_value = table["$content"];
+            if (!a_value.IsObject()) { return; }
+            if (!container.create(type_name)) { return; }
+
+            rttr::variant value = container.get_value();
+            deserialize_to(a_value, value);
+        }
+    };
 
     template <>
     struct serde_adaptor<rapidjson_value, rttr::variant_sequential_view, type::seq_t> {

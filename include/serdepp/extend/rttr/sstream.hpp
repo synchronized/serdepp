@@ -47,6 +47,30 @@ namespace serde {
         }
     };
 
+    template <>
+    struct serde_adaptor<serde_sstream, rttr::variant_polymoph_view, type::poly_t> {
+        using Container = rttr::variant_polymoph_view;
+        using E = rttr::variant;
+        inline static void from(serde_sstream& s, std::string_view key, Container& container) {
+            throw serde::unimplemented_error("serde_adaptor::from(serde_sstream, key data)");
+        }
+        inline static void into(serde_sstream& s, std::string_view key, const Container& data) {
+            if (!data.is_valid()) { return; }
+
+            if(key.empty()) {
+                s.set_wrapper('[', ']');
+                s.add(data.get_type_name(), "$typeName");
+                rttr::variant value = data.get_value();
+                s.add(serialize<serde_sstream>(value).str(), "$content");
+            } else {
+                serde_sstream ss('[',']');
+                ss.add(data.get_type_name(), "$typeName");
+                rttr::variant value = data.get_value();
+                ss.add(serialize<serde_sstream>(value).str(), "$content");
+                s.add(ss.str(), key);
+            }
+        }
+    };
 
     template <>
     struct serde_adaptor<serde_sstream, rttr::variant_sequential_view, type::seq_t> {

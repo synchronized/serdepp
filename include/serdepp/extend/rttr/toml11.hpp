@@ -117,6 +117,40 @@ namespace serde {
     };
 
     template <>
+    struct serde_adaptor<toml_v, rttr::variant_polymoph_view, type::poly_t> {
+        using type_checker = serde_type_checker<toml_v>;
+        using Container = rttr::variant_polymoph_view;
+        using E = rttr::variant;
+        inline static void from(toml_v& s, std::string_view key, Container& container) {
+            auto& _obj = key.empty() ? s : s.at(std::string{key});
+            if (_obj.is_empty() || !_obj.is_table()) return;
+
+            auto obj = _obj.as_table();
+            auto a_type_name = obj["$typeName"];
+            if (a_type_name.is_empty() || !a_type_name.is_string()) return;
+            std::string type_name = a_type_name.as_string();
+
+            auto a_value = obj["$content"];
+            if (a_value.is_empty() || !a_value.is_table()) return;
+            if (!container.create(type_name)) return;
+            rttr::variant value = container.get_value();
+            deserialize_to(a_value, value);
+        }
+        inline static void into(toml_v& s, std::string_view key, const Container& data) {
+            if (!data.is_valid()) return;
+
+            std::string type_name = data.get_type_name();
+            rttr::variant value = data.get_value();
+
+            auto map = toml::table{
+                {"$typeName" , std::move(serialize<toml_v>(type_name))},
+                {"$content", std::move(serialize<toml_v>(value))},
+            };
+            (key.empty() ? s : s[std::string{key}]) = std::move(map);
+        }
+    };
+
+    template <>
     struct serde_adaptor<toml_v, rttr::variant_sequential_view, type::seq_t> {
         using type_checker = serde_type_checker<toml_v>;
         using Sequent = rttr::variant_sequential_view;
