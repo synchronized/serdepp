@@ -5,6 +5,7 @@
 
 #include "serdepp/adaptor/sstream.hpp"
 
+/*
 namespace serde::ostream {
     //template<class Ostream, class T>
     //Ostream&& operator<<(Ostream&& os, const T& x) {
@@ -23,5 +24,6 @@ namespace serde::ostream {
         }
     }
 };
+*/
 
 #endif

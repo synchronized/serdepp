@@ -4,8 +4,9 @@
 #include <serdepp/adaptor/toml11.hpp>
 #include <serdepp/adaptor/yaml-cpp.hpp>
 #include <serdepp/adaptor/fmt.hpp>
+#include "serdepp/adaptor/sstream.hpp"
 
-using namespace serde::ostream;
+//using namespace serde::ostream;
 
 std::string to_str(rapidjson::Document& doc) {
     using namespace rapidjson;
@@ -78,7 +79,7 @@ int main()
         fmt::print("{}\n", t_from_rjson);
         fmt::print("{}\n", t_from_toml);
         fmt::print("{}\n", t_from_yaml);
-        std::cout << t << '\n';
+        std::cout << serde::serialize<serde::serde_sstream>(t).str() << '\n';
 
     }catch(std::exception& e) {
         fmt::print(stderr,"{}\n",e.what());

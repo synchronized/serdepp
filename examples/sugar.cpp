@@ -35,7 +35,7 @@ struct Test {
 
 int main(int argc, char *argv[])
 {
-    std::cout << Test{1} << "\n";
+    std::cout << serde::serialize<serde::serde_sstream>(Test{1}).str() << "\n";
     
     return 0;
 }

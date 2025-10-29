@@ -94,7 +94,7 @@ int main()
     fmt::print("{}\n", t_from_toml);
     fmt::print("{}\n", t_from_yaml);
     fmt::print("{}\n", t_from_rjson);
-    std::cout << t << '\n';
+    std::cout << serde::serialize<serde::serde_sstream>(t).str() << '\n';
 
     return 0;
 }
