@@ -14,16 +14,21 @@ namespace serde {
         inline static void from(serde_sstream& s, std::string_view key, ValueType& data) {
             throw serde::unimplemented_error("serde_adaptor::from(serde_sstream, key data)");
         }
-        inline static void into(serde_sstream& s, std::string_view key, const ValueType& data) {
+        inline static void into(serde_sstream& s, std::string_view key, const ValueType& orig_data) {
+            const rttr::type orig_data_type = orig_data.get_type();
+            rttr::variant wrapped_val = orig_data_type.is_wrapper() 
+                    ? orig_data.extract_wrapped_value() : orig_data;
+            const rttr::type wrapped_type = wrapped_val.get_type();
+            rttr::variant data = wrapped_type.is_pointer() 
+                    ? wrapped_val.extract_pointer_value() : wrapped_val;
             const rttr::type data_type = data.get_type();
-            const rttr::type wrapped_type = data_type.is_wrapper() ? data_type.get_wrapped_type() : data_type;
 
-            if (wrapped_type.is_arithmetic()) {
+            if (data_type.is_arithmetic()) {
                 s.add(data.to_string(), key); 
                 return;
             } 
 
-            else if (wrapped_type.is_enumeration()) {
+            else if (data_type.is_enumeration()) {
                 bool ok;
                 std::string str_value = data.to_string(&ok);
                 if (ok) {

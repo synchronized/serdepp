@@ -39,24 +39,29 @@ namespace serde {
             if (val) {
                 const rttr::type val_type = val.get_type();
                 const rttr::type data_type = data.get_type();
-                if (!data || val.convert(data_type)) {
+                if (!data || val.convert(data_type.get_raw_type())) {
                     data = val;
                 }
             }
 
         }
-        inline static void into(yaml& s, std::string_view key, const ValueType& data) {
-            auto data_type = data.get_type();
-            auto wrapped_type = data_type.is_wrapper() ? data_type.get_wrapped_type() : data_type;
+        inline static void into(yaml& s, std::string_view key, const ValueType& orig_data) {
+            const rttr::type orig_data_type = orig_data.get_type();
+            rttr::variant wrapped_val = orig_data_type.is_wrapper() 
+                    ? orig_data.extract_wrapped_value() : orig_data;
+            const rttr::type wrapped_type = wrapped_val.get_type();
+            rttr::variant data = wrapped_type.is_pointer() 
+                    ? wrapped_val.extract_pointer_value() : wrapped_val;
+            const rttr::type data_type = data.get_type();
 
             if (key.empty()) {
                 auto& avalue = s;
 
-                if (wrapped_type.is_arithmetic()) {
+                if (data_type.is_arithmetic()) {
                     avalue = data.to_string();
                 } 
 
-                else if (wrapped_type.is_enumeration()) {
+                else if (data_type.is_enumeration()) {
                     bool ok;
                     std::string str_value = data.to_string(&ok);
                     if (ok) {
@@ -65,7 +70,7 @@ namespace serde {
                     }
                 } 
 
-                else if (wrapped_type == rttr::type::get<std::string>()) {
+                else if (data_type == rttr::type::get<std::string>()) {
                     avalue = data.to_string();
                     return;
                 } 
@@ -79,11 +84,11 @@ namespace serde {
             } else {
                 auto avalue = s[std::string{key}];
 
-                if (wrapped_type.is_arithmetic()) {
+                if (data_type.is_arithmetic()) {
                     avalue = data.to_string();
                 } 
 
-                else if (wrapped_type.is_enumeration()) {
+                else if (data_type.is_enumeration()) {
                     bool ok;
                     std::string str_value = data.to_string(&ok);
                     if (ok) {
@@ -92,7 +97,7 @@ namespace serde {
                     }
                 } 
 
-                else if (wrapped_type == rttr::type::get<std::string>()) {
+                else if (data_type == rttr::type::get<std::string>()) {
                     avalue = data.to_string();
                     return;
                 } 

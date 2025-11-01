@@ -138,7 +138,7 @@ namespace serde {
         static void from(rapidjson_type& s, std::string_view key, T& data) {
             using namespace rapidjson;
             auto& obj = s[key.data()];
-            if(!obj.IsObject()) obj.SetObject();
+            if(!obj.IsObject()) return;
             deserialize_to(obj, data);
         }
         static void into(rapidjson_type& s, std::string_view key, const T& data) {
@@ -154,7 +154,7 @@ namespace serde {
         static void from(rapidjson::Value& s, std::string_view key, T& data) {
             using namespace rapidjson;
             auto& obj = s[key.data()];
-            if(!obj.IsObject()) obj.SetObject();
+            if(!obj.IsObject()) return;
             deserialize_to(obj, data);
         }
     };
@@ -165,7 +165,7 @@ namespace serde {
         static void from(rapidjson_type& s, std::string_view key, T& arr) {
             using namespace rapidjson;
             auto& table = key.empty() ? s : s[key.data()];
-            if(!table.IsArray()) { table.SetArray(); }
+            if(!table.IsArray()) { return; }
             if constexpr(is_arrayable_v<T>) arr.reserve(table.Size());
             for(unsigned int i = 0; i < table.Size(); ++i) {
                 arr.push_back(std::move(deserialize<E>(table[i])));
@@ -198,7 +198,7 @@ namespace serde {
         static void from(rapidjson::Value& s, std::string_view key, T& arr) {
             using namespace rapidjson;
             auto& table = key.empty() ? s : s[key.data()];
-            if(!table.IsArray()) { table.SetArray(); }
+            if(!table.IsArray()) { return; }
             if constexpr(is_arrayable_v<T>) arr.reserve(table.Size());
             for(unsigned int i = 0; i < table.Size(); ++i) {
                 arr.push_back(std::move(deserialize<E>(table[i])));

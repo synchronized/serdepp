@@ -58,51 +58,55 @@ namespace serde {
                 val = real_val;
             }
             if (val) {
-                if (!data || val.convert(data.get_type())) {
+                if (!data || val.convert(data.get_type().get_raw_type())) {
                     data = val;
                 }
             }
         }
-        inline static void into(json& s, std::string_view key, const ValueType& data) {
+        inline static void into(json& s, std::string_view key, const ValueType& orig_data) {
+            const rttr::type orig_data_type = orig_data.get_type();
+            rttr::variant wrapped_val = orig_data_type.is_wrapper() 
+                    ? orig_data.extract_wrapped_value() : orig_data;
+            const rttr::type wrapped_type = wrapped_val.get_type();
+            rttr::variant data = wrapped_type.is_pointer() 
+                    ? wrapped_val.extract_pointer_value() : wrapped_val;
             const rttr::type data_type = data.get_type();
-            const rttr::type wrapped_type = data_type.is_wrapper() 
-                    ? data_type.get_wrapped_type() : data_type;
 
             json& jvalue = key.empty() ? s : s[std::string{key}];
 
-            if (wrapped_type.is_arithmetic()) {
-                if (wrapped_type == rttr::type::get<bool>()) {
+            if (data_type.is_arithmetic()) {
+                if (data_type == rttr::type::get<bool>()) {
                     jvalue = data.to_bool();
                     return;
-                } else if (wrapped_type == rttr::type::get<char>() 
-                        || wrapped_type == rttr::type::get<int8_t>() 
-                        || wrapped_type == rttr::type::get<int16_t>() 
-                        || wrapped_type == rttr::type::get<int32_t>()) 
+                } else if (data_type == rttr::type::get<char>() 
+                        || data_type == rttr::type::get<int8_t>() 
+                        || data_type == rttr::type::get<int16_t>() 
+                        || data_type == rttr::type::get<int32_t>()) 
                 {
                     jvalue = data.to_int32();
                     return;
-                } else if (wrapped_type == rttr::type::get<int64_t>()) {
+                } else if (data_type == rttr::type::get<int64_t>()) {
                     jvalue = data.to_int64();
                     return;
-                } else if (wrapped_type == rttr::type::get<uint8_t>() 
-                        || wrapped_type == rttr::type::get<uint16_t>() 
-                        || wrapped_type == rttr::type::get<uint32_t>()) 
+                } else if (data_type == rttr::type::get<uint8_t>() 
+                        || data_type == rttr::type::get<uint16_t>() 
+                        || data_type == rttr::type::get<uint32_t>()) 
                 {
                     jvalue = data.to_uint32();
                     return;
-                } else if (wrapped_type == rttr::type::get<uint64_t>()) {
+                } else if (data_type == rttr::type::get<uint64_t>()) {
                     jvalue = data.to_uint64();
                     return;
-                } else if (wrapped_type == rttr::type::get<float>() 
-                        || wrapped_type == rttr::type::get<double>()) 
+                } else if (data_type == rttr::type::get<float>() 
+                        || data_type == rttr::type::get<double>()) 
                 {
                     jvalue = data.to_double();
                     return;
                 }
             } 
 
-            else if (wrapped_type.is_enumeration()) {
-                auto enum_type = wrapped_type.get_enumeration();
+            else if (data_type.is_enumeration()) {
+                auto enum_type = data_type.get_enumeration();
                 bool ok;
                 int int_value = data.to_int(&ok);
                 if (ok) {
