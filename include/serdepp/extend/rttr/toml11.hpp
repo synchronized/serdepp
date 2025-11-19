@@ -11,7 +11,7 @@ namespace serde {
     using toml_v = toml::value;
 
     template <>
-    struct serde_adaptor<toml_v, rttr::variant, type::basic_t> {
+    struct serde_adaptor<toml_v, rttr::variant, detail::basic_t> {
         using ValueType = rttr::variant;
         inline static void from(toml_v& s, std::string_view key, ValueType& data) {
             ValueType val;
@@ -53,7 +53,7 @@ namespace serde {
         inline static void into(toml_v& s, std::string_view key, const ValueType& orig_data) {
             const rttr::type orig_data_type = orig_data.get_type();
             rttr::variant wrapped_val = orig_data_type.is_wrapper() 
-                    ? orig_data.extract_wrapped_value() : orig_data;
+                    ? orig_data.extract_wrapped_ref_value() : orig_data;
             const rttr::type wrapped_type = wrapped_val.get_type();
             rttr::variant data = wrapped_type.is_pointer() 
                     ? wrapped_val.extract_pointer_value() : wrapped_val;
@@ -121,7 +121,7 @@ namespace serde {
     };
 
     template <>
-    struct serde_adaptor<toml_v, rttr::variant_polymoph_view, type::poly_t> {
+    struct serde_adaptor<toml_v, rttr::variant_polymoph_view, detail::poly_t> {
         using type_checker = serde_type_checker<toml_v>;
         using Container = rttr::variant_polymoph_view;
         using E = rttr::variant;
@@ -143,19 +143,19 @@ namespace serde {
         inline static void into(toml_v& s, std::string_view key, const Container& data) {
             if (!data.is_valid()) return;
 
-            std::string type_name = data.get_type_name();
+            std::string type_name = data.get_real_type().get_name().to_string();
             rttr::variant value = data.get_value();
 
             auto map = toml::table{
-                {"$typeName" , std::move(serialize<toml_v>(type_name))},
-                {"$content", std::move(serialize<toml_v>(value))},
+                {"$typeName" , serialize<toml_v>(type_name)},
+                {"$content", serialize<toml_v>(value)},
             };
             (key.empty() ? s : s[std::string{key}]) = std::move(map);
         }
     };
 
     template <>
-    struct serde_adaptor<toml_v, rttr::variant_sequential_view, type::seq_t> {
+    struct serde_adaptor<toml_v, rttr::variant_sequential_view, detail::seq_t> {
         using type_checker = serde_type_checker<toml_v>;
         using Sequent = rttr::variant_sequential_view;
         using E = rttr::variant;
@@ -169,7 +169,7 @@ namespace serde {
                 E orig_value = seq.get_value(i);
                 rttr::type value_type1 = orig_value.get_type();
                 E value = orig_value.get_type().is_wrapper() 
-                        ? orig_value.extract_wrapped_value() : orig_value;
+                        ? orig_value.extract_wrapped_ptr_value() : orig_value;
                 rttr::type value_type = value.get_type();
 
                 deserialize_to(jvalue, value);
@@ -181,14 +181,14 @@ namespace serde {
             toml::array arr;
             arr.reserve(data.get_size());
             for(auto& value : data) { 
-                arr.push_back(std::move(serialize<toml_v>(value))); 
+                arr.push_back(serialize<toml_v>(value)); 
             }
             (key.empty() ? s : s[std::string{key}]) = std::move(arr);
         }
     };
 
     template <>
-    struct serde_adaptor<toml_v, rttr::variant_associative_view, type::map_t> {
+    struct serde_adaptor<toml_v, rttr::variant_associative_view, detail::map_t> {
         using type_checker = serde_type_checker<toml_v>;
         using Map = rttr::variant_associative_view;
         using E = rttr::variant;
@@ -197,7 +197,7 @@ namespace serde {
             if (map.is_key_only_type()) {
                 const rttr::type orig_key_type = map.get_key_type();
                 if (table.is_array()) {
-                    if (serde_rttr_type_checker::is_basic(orig_key_type)) {
+                    if (detail::rttr_type_is_basic(orig_key_type)) {
                         for (auto& jvalue : table.as_array()) {
                             E key;
                             deserialize_to(jvalue, key);
@@ -212,7 +212,7 @@ namespace serde {
                         for (auto& jvalue : table.as_array()) {
                             E orig_key = orig_key_type.create();
                             E key = orig_key.get_type().get_raw_type().is_wrapper() 
-                                    ? orig_key.extract_wrapped_value() : orig_key;
+                                    ? orig_key.extract_wrapped_ptr_value() : orig_key;
                             deserialize_to(jvalue, key);
                             if (key.get_type() != orig_key_type) {
                                 if (!key.convert(orig_key_type)) {
@@ -226,9 +226,9 @@ namespace serde {
             } else {
                 const rttr::type orig_key_type = map.get_key_type();
                 const rttr::type orig_value_type = map.get_value_type();
-                if (serde_rttr_type_checker::is_basic(orig_key_type)) {
+                if (detail::rttr_type_is_basic(orig_key_type)) {
                     if (table.is_table()) {
-                        if (serde_rttr_type_checker::is_basic(orig_value_type)) {
+                        if (detail::rttr_type_is_basic(orig_value_type)) {
                             for(auto& [jkey, jvalue] : table.as_table()) { 
                                 std::string str_key = jkey;
                                 E key = str_key;
@@ -255,7 +255,7 @@ namespace serde {
                                 E orig_value = orig_value_type.create();
                                 rttr::type value_type1 = orig_value.get_type();
                                 E value = orig_value.get_type().is_wrapper() 
-                                        ? orig_value.extract_wrapped_value() : orig_value;
+                                        ? orig_value.extract_wrapped_ptr_value() : orig_value;
                                 rttr::type value_type = value.get_type();
                                 deserialize_to(jvalue, value);
                                 if (key.get_type() != orig_key_type) {
@@ -276,13 +276,13 @@ namespace serde {
                 } 
                 else {
                     if (table.is_array()) {
-                        if (serde_rttr_type_checker::is_basic(orig_value_type)) {
+                        if (detail::rttr_type_is_basic(orig_value_type)) {
                             for(auto& _jvalue : table.as_array()) { 
                                 if (_jvalue.is_table()) {
                                     auto& jvalue = _jvalue.as_table();
                                     E orig_key = orig_key_type.create(); 
                                     E key = orig_key.get_type().get_raw_type().is_wrapper() 
-                                            ? orig_key.extract_wrapped_value() : orig_key;
+                                            ? orig_key.extract_wrapped_ptr_value() : orig_key;
                                     E orig_value = orig_value_type.create();
                                     E value;
                                     deserialize_to(jvalue["key"], key);
@@ -306,10 +306,10 @@ namespace serde {
                                     auto& jvalue = _jvalue.as_table();
                                     E orig_key = orig_key_type.create(); 
                                     E key = orig_key.get_type().get_raw_type().is_wrapper() 
-                                            ? orig_key.extract_wrapped_value() : orig_key;
+                                            ? orig_key.extract_wrapped_ptr_value() : orig_key;
                                     E orig_value = orig_value_type.create();
                                     E value = orig_value.get_type().get_raw_type().is_wrapper() 
-                                            ? orig_value.extract_wrapped_value() : orig_value;
+                                            ? orig_value.extract_wrapped_ptr_value() : orig_value;
                                     deserialize_to(jvalue["key"], key);
                                     deserialize_to(jvalue["value"], value);
                                     if (key.get_type() != orig_key_type) {
@@ -337,26 +337,21 @@ namespace serde {
                 auto& real_arr = map.as_array();
                 real_arr.reserve(data.get_size());
                 for(auto& [key_, _] : data) { 
-                    map.push_back(std::move(serialize<toml_v>(key_))); 
+                    map.push_back(serialize<toml_v>(key_)); 
                 }
             } else {
                 auto orig_key_type = data.get_key_type();
-                if (serde_rttr_type_checker::is_basic(orig_key_type)) {
+                if (detail::rttr_type_is_basic(orig_key_type)) {
                     map = toml::table{};
                     auto& real_map = map.as_table();
                     real_map.reserve(data.get_size());
                     for(auto& [key_, value_] : data) { 
                         bool ok = false;
                         auto str_key = key_.to_string(&ok);
-                        if (ok) {
-                            serialize_to<toml_v>(value_, map[str_key]); 
+                        if (!ok) {
                             continue;
                         }
-                        auto num_key = key_.to_int(&ok);
-                        if (ok) {
-                            serialize_to<toml_v>(value_, map[num_key]); 
-                            continue;
-                        }
+                        serialize_to<toml_v>(value_, map[str_key]); 
                     }
                 } 
                 else {
@@ -365,8 +360,8 @@ namespace serde {
                     real_arr.reserve(data.get_size());
                     for(auto& [key_, value_] : data) { 
                         toml::table obj_value = {
-                            {"key" , std::move(serialize<toml_v>(key_))},
-                            {"value", std::move(serialize<toml_v>(value_))},
+                            {"key" , serialize<toml_v>(key_)},
+                            {"value", serialize<toml_v>(value_)},
                         };
                         map.push_back(obj_value); 
                     }
@@ -377,7 +372,7 @@ namespace serde {
     };
 
     template<>
-    struct serde_adaptor<toml_v, rttr::variant, type::struct_t> {
+    struct serde_adaptor<toml_v, rttr::variant, detail::struct_t> {
         using Object = rttr::variant;
         static void from(toml_v& s, std::string_view key, Object& orig_data) {
             rttr::type orig_type = orig_data.get_type();

@@ -1,15 +1,12 @@
 #pragma once
 
-#include <serdepp/serde.hpp>
-#include <serdepp/adaptor/sstream.hpp>
-
-#include <serdepp/extend/rttr.hpp>
-
 #include <rttr/type>
+
+#include "serdepp/adaptor/sstream.hpp"
 
 namespace serde {
     template <>
-    struct serde_adaptor<serde_sstream, rttr::variant, type::basic_t> {
+    struct serde_adaptor<serde_sstream, rttr::variant, detail::basic_t> {
         using ValueType = rttr::variant;
         inline static void from(serde_sstream& s, std::string_view key, ValueType& data) {
             throw serde::unimplemented_error("serde_adaptor::from(serde_sstream, key data)");
@@ -17,7 +14,7 @@ namespace serde {
         inline static void into(serde_sstream& s, std::string_view key, const ValueType& orig_data) {
             const rttr::type orig_data_type = orig_data.get_type();
             rttr::variant wrapped_val = orig_data_type.is_wrapper() 
-                    ? orig_data.extract_wrapped_value() : orig_data;
+                    ? orig_data.extract_wrapped_ptr_value() : orig_data;
             const rttr::type wrapped_type = wrapped_val.get_type();
             rttr::variant data = wrapped_type.is_pointer() 
                     ? wrapped_val.extract_pointer_value() : wrapped_val;
@@ -53,7 +50,7 @@ namespace serde {
     };
 
     template <>
-    struct serde_adaptor<serde_sstream, rttr::variant_polymoph_view, type::poly_t> {
+    struct serde_adaptor<serde_sstream, rttr::variant_polymoph_view, detail::poly_t> {
         using Container = rttr::variant_polymoph_view;
         using E = rttr::variant;
         inline static void from(serde_sstream& s, std::string_view key, Container& container) {
@@ -64,12 +61,12 @@ namespace serde {
 
             if(key.empty()) {
                 s.set_wrapper('[', ']');
-                s.add(data.get_type_name(), "$typeName");
+                s.add(data.get_real_type().get_name().to_string(), "$typeName");
                 rttr::variant value = data.get_value();
                 s.add(serialize<serde_sstream>(value).str(), "$content");
             } else {
                 serde_sstream ss('[',']');
-                ss.add(data.get_type_name(), "$typeName");
+                ss.add(data.get_real_type().get_name().to_string(), "$typeName");
                 rttr::variant value = data.get_value();
                 ss.add(serialize<serde_sstream>(value).str(), "$content");
                 s.add(ss.str(), key);
@@ -78,7 +75,7 @@ namespace serde {
     };
 
     template <>
-    struct serde_adaptor<serde_sstream, rttr::variant_sequential_view, type::seq_t> {
+    struct serde_adaptor<serde_sstream, rttr::variant_sequential_view, detail::seq_t> {
         using Sequent = rttr::variant_sequential_view;
         using E = rttr::variant;
         inline static void from(serde_sstream& s, std::string_view key, Sequent& seq) {
@@ -97,7 +94,7 @@ namespace serde {
     };
 
     template <>
-    struct serde_adaptor<serde_sstream, rttr::variant_associative_view, type::map_t> {
+    struct serde_adaptor<serde_sstream, rttr::variant_associative_view, detail::map_t> {
         using Map = rttr::variant_associative_view;
         using E = rttr::variant;
         inline static void from(serde_sstream& s, std::string_view key, Map& map) {
@@ -135,7 +132,7 @@ namespace serde {
     };
 
     template<>
-    struct serde_adaptor<serde_sstream, rttr::variant, type::struct_t> {
+    struct serde_adaptor<serde_sstream, rttr::variant, detail::struct_t> {
         using Object = rttr::variant;
         static void from(serde_sstream& s, std::string_view key, Object& orig_data) {
             throw serde::unimplemented_error("serde_adaptor::from(serde_sstream, key data)");

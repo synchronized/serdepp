@@ -5,10 +5,11 @@
 
 #include <fmt/format.h>
 #include <fmt/ranges.h>
-#include <serdepp/adaptor/sstream.hpp>
+
+#include "serdepp/adaptor/sstream.hpp"
 
 template <typename T>
-struct fmt::formatter<T, std::enable_if_t<serde::type::is_struct_v<T>, char>>
+struct fmt::formatter<T, std::enable_if_t<serde::detail::is_struct_v<T>, char>>
     : fmt::formatter<std::string> {
   template <typename FormatCtx>
   auto format(const T &serde_type, FormatCtx &ctx) const {
@@ -16,6 +17,8 @@ struct fmt::formatter<T, std::enable_if_t<serde::type::is_struct_v<T>, char>>
                                                ctx);
   }
 };
+
+#include "serdepp/extend/rttr/fmt.hpp"
 //
 // template<>
 // struct fmt::formatter<serde::serde_sstream> : fmt::formatter<std::string> {

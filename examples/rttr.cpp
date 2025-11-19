@@ -1,27 +1,16 @@
-#include <serdepp/serde.hpp>
-#include <serdepp/adaptor/nlohmann_json.hpp>
-#include <serdepp/adaptor/rapidjson.hpp>
-#include "serdepp/adaptor/fmt.hpp"
-
-#include <serdepp/extend/rttr.hpp>
-#include <serdepp/extend/rttr/nlohmann_json.hpp>
-#include <serdepp/extend/rttr/rapidjson.hpp>
-#include <serdepp/extend/rttr/toml11.hpp>
-#include <serdepp/extend/rttr/yaml-cpp.hpp>
-#include <serdepp/extend/rttr/fmt.hpp>
-
-#include <rapidjson/document.h>
-#include <toml.hpp>
 
 #include <rttr/registration>
 #include <rttr/type>
 
+#include <serdepp/adaptor/fmt.hpp>
+#include <serdepp/adaptor/nlohmann_json.hpp>
+#include <serdepp/adaptor/rapidjson.hpp>
+#include <serdepp/adaptor/toml11.hpp>
+#include <serdepp/adaptor/yaml-cpp.hpp>
+
 #include <string>
 #include <vector>
 #include <map>
-
-#include <fmt/core.h>
-
 
 struct Person {
 public:
@@ -129,12 +118,14 @@ public:
             return *this;
         }
         val = other.val;
+        return *this;
     }
     poly_base1& operator=(poly_base1&& other) {
         if (this == (void*)&other) {
             return *this;
         }
         val = other.val;
+        return *this;
     }
 
     poly_base1(int val) : val(val) {}
@@ -159,6 +150,7 @@ public:
         }
         val = other.val;
         sub_val = other.sub_val;
+        return *this;
     }
     poly_sub1& operator=(poly_sub1&& other) {
         if (this == (void*)&other) {
@@ -166,6 +158,7 @@ public:
         }
         val = other.val;
         sub_val = other.sub_val;
+        return *this;
     }
 
     poly_sub1(int val) {
@@ -257,29 +250,6 @@ RTTR_REGISTRATION
         .property("value_ptr", &poly_ptr::value_ptr);
 }
 
-std::string str(nlohmann::json& doc) {
-    return doc.dump();
-}
-
-std::string str(rapidjson::Document &doc) {
-    using namespace rapidjson;
-    StringBuffer buffer;
-    Writer<StringBuffer> writer(buffer);
-    doc.Accept(writer);
-    return buffer.GetString();
-}
-
-std::string str(toml::value& doc) {
-    return toml::format(doc);
-}
-
-std::string str(YAML::Node& doc) {
-    YAML::Emitter emitter;
-    // 3. Emit the Node to the Emitter
-    emitter << doc;
-    return emitter.c_str();
-}
-
 template<typename Adapter>
 void test_serialize() {
 
@@ -350,17 +320,17 @@ void test_serialize() {
         Adapter adapter1_5 = serde::serialize<Adapter>(var1_5);
         Adapter adapter1_6 = serde::serialize<Adapter>(var1_6);
         fmt::print("-------------------------\n");
-        fmt::print("adapter1_1 : {}\n", str(adapter1_1));
+        fmt::print("adapter1_1 : {}\n", serde::to_string(adapter1_1));
         fmt::print("-------------------------\n");
-        fmt::print("adapter1_2 : {}\n", str(adapter1_2));
+        fmt::print("adapter1_2 : {}\n", serde::to_string(adapter1_2));
         fmt::print("-------------------------\n");
-        fmt::print("adapter1_3 : {}\n", str(adapter1_3));
+        fmt::print("adapter1_3 : {}\n", serde::to_string(adapter1_3));
         fmt::print("-------------------------\n");
-        fmt::print("adapter1_4 : {}\n", str(adapter1_4));
+        fmt::print("adapter1_4 : {}\n", serde::to_string(adapter1_4));
         fmt::print("-------------------------\n");
-        fmt::print("adapter1_5 : {}\n", str(adapter1_5));
+        fmt::print("adapter1_5 : {}\n", serde::to_string(adapter1_5));
         fmt::print("-------------------------\n");
-        fmt::print("adapter1_6 : {}\n", str(adapter1_6));
+        fmt::print("adapter1_6 : {}\n", serde::to_string(adapter1_6));
         std::fflush(stdout);  // 强制刷新输出缓冲区
 
         rttr::variant var2_1 = rttr::type::get<Person>().create();

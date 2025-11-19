@@ -3,9 +3,11 @@
 #ifndef __SERDEPP_ADAPTOR_SSTREAM_HPP__
 #define __SERDEPP_ADAPTOR_SSTREAM_HPP__
 
-#include <serdepp/serializer.hpp>
 #include <sstream>
 #include <iostream>
+#include <variant>
+
+#include "serdepp/serializer.hpp"
 
 namespace serde {
     class serde_sstream {
@@ -57,7 +59,7 @@ namespace serde {
         }
     };
 
-    template<typename T> struct serde_adaptor<serde_sstream, T, type::struct_t> {
+    template<typename T> struct serde_adaptor<serde_sstream, T, detail::struct_t> {
         inline static void from(serde_sstream& s, std::string_view key, T& data) {
             throw serde::unimplemented_error("serde_adaptor::from(serde_sstream, key data)");
         }
@@ -76,7 +78,7 @@ namespace serde {
         }
     };
 
-    template<typename T> struct serde_adaptor<serde_sstream, T, type::seq_t> {
+    template<typename T> struct serde_adaptor<serde_sstream, T, detail::seq_t> {
         static void from(serde_sstream& s, std::string_view key, T& arr) {
             throw serde::unimplemented_error("serde_adaptor::from(serde_sstream, key data)");
         }
@@ -92,8 +94,8 @@ namespace serde {
         }
     };
 
-    template <typename Map> struct serde_adaptor<serde_sstream, Map, type::map_t> {
-        using E = type::map_e<Map>;
+    template <typename Map> struct serde_adaptor<serde_sstream, Map, detail::map_t> {
+        using E = detail::map_e<Map>;
         inline static void from(serde_sstream& s, std::string_view key, Map& map) {
             throw serde::unimplemented_error("serde_adaptor::from(serde_sstream, key data)");
         }
@@ -113,5 +115,7 @@ namespace serde {
     template<typename T>
     inline std::string to_str(const T& type) { return serialize<serde_sstream>(type).str(); }
 }
+
+#include "serdepp/extend/rttr/sstream.hpp"
 
 #endif

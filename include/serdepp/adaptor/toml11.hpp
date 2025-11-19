@@ -6,6 +6,11 @@
 #include <toml.hpp>
 #include "serdepp/serializer.hpp"
 
+namespace serde {
+    std::string to_string(toml::value& doc) {
+        return toml::format(doc);
+    }
+}
 
 namespace serde {
     using toml_v = toml::value;
@@ -45,7 +50,7 @@ namespace serde {
         }
     };
 
-    template<typename T> struct serde_adaptor<toml_v, T, type::struct_t> {
+    template<typename T> struct serde_adaptor<toml_v, T, detail::struct_t> {
         inline static void from(toml_v& s, std::string_view key, T& data) {
             deserialize_to<T>(toml::find(s, std::string{key}), data);
         }
@@ -63,17 +68,17 @@ namespace serde {
         }
     };
 
-    template<typename T> struct serde_adaptor<toml_v, T, type::seq_t> {
-    using E = type::seq_e<T>;
+    template<typename T> struct serde_adaptor<toml_v, T, detail::seq_t> {
+    using E = detail::seq_e<T>;
         static void from(toml_v& s, std::string_view key, T& arr) {
             auto& table = key.empty() ? s : s[std::string{key}];
-            if constexpr(is_arrayable_v<T>) arr.reserve(table.size());
+            if constexpr(detail::is_reserveable_v<T>) arr.reserve(table.size());
             for(auto& value : table.as_array()) { arr.push_back(deserialize<E>(value)); }
         }
         static void into(toml_v& s, std::string_view key, const T& data) {
             toml::array arr;
             arr.reserve(data.size());
-            if constexpr(type::is_struct_v<E>) {
+            if constexpr(detail::is_struct_v<E>) {
                 for(auto& value: data) { arr.push_back(std::move(serialize<toml_v>(value).as_table())); }
             } else {
                 for(auto& value: data) { arr.push_back(std::move(serialize<toml_v>(value)));  }
@@ -82,8 +87,8 @@ namespace serde {
         }
     };
 
-    template <typename Map> struct serde_adaptor<toml_v, Map, type::map_t> {
-        using E = type::map_e<Map>;
+    template <typename Map> struct serde_adaptor<toml_v, Map, detail::map_t> {
+        using E = detail::map_e<Map>;
         inline static void from(toml_v& s, std::string_view key, Map& map) {
             auto& table = key.empty() ? s : s[std::string{key}];
             for(auto& [key_, value_] : table.as_table()) { deserialize_to<E>(value_, map[key_]);}
@@ -94,5 +99,7 @@ namespace serde {
         }
     };
 }
+
+#include "serdepp/extend/rttr/toml11.hpp"
 
 #endif

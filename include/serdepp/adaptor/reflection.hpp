@@ -34,7 +34,7 @@ namespace serde {
         private:
             template<typename U>
             inline constexpr void func(U& data, std::string_view key) {
-                if constexpr(std::is_same_v<serde::remove_cvref_t<U>, M>) {
+                if constexpr(std::is_same_v<serde::detail::remove_cvref_t<U>, M>) {
                     if(key == key_) { member_ = &data; }
                 }
             }
@@ -54,7 +54,7 @@ namespace serde {
         private:
             template<typename U>
             inline constexpr void func(U& data, std::string_view key) {
-                if constexpr(std::is_same_v<serde::remove_cvref_t<U>, M>) {
+                if constexpr(std::is_same_v<serde::detail::remove_cvref_t<U>, M>) {
                     if(index == visit_) { member_ = &data; }
                 }
                 visit_++;
@@ -76,7 +76,7 @@ namespace serde {
         private:
             template<typename U>
             inline constexpr void func(U& data, std::string_view key) {
-                if constexpr(std::is_same_v<serde::remove_cvref_t<U>, M>) {
+                if constexpr(std::is_same_v<serde::detail::remove_cvref_t<U>, M>) {
                     if(index == visit_) {
                         member_ = &data;
                         name_ = key;
@@ -109,7 +109,7 @@ namespace serde {
     template<class T>
     struct serde_struct_info {
         DERIVE_SERDE(serde_struct_info)
-        using Type= meta::remove_cvref_t<T>;
+        using Type= detail::remove_cvref_t<T>;
         constexpr static size_t size = tuple_size_v<Type>;
         constexpr static std::string_view name = nameof::nameof_type<Type>();
 
@@ -173,7 +173,7 @@ namespace serde {
 
     template<class T>
     to_tuple_t<T> make_tuple(T& value) {
-        using rtype = meta::remove_cvref_t<T>;
+        using rtype = detail::remove_cvref_t<T>;
         return detail::make_tuple_impl(value, std::make_index_sequence<tuple_size_v<rtype>>());  
     }
 }

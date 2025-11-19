@@ -11,7 +11,7 @@ namespace serde {
     using yaml = YAML::Node;
 
     template <>
-    struct serde_adaptor<yaml, rttr::variant, type::basic_t> {
+    struct serde_adaptor<yaml, rttr::variant, detail::basic_t> {
         using ValueType = rttr::variant;
         inline static void from(yaml& s, std::string_view key, ValueType& data) {
             ValueType val;
@@ -48,7 +48,7 @@ namespace serde {
         inline static void into(yaml& s, std::string_view key, const ValueType& orig_data) {
             const rttr::type orig_data_type = orig_data.get_type();
             rttr::variant wrapped_val = orig_data_type.is_wrapper() 
-                    ? orig_data.extract_wrapped_value() : orig_data;
+                    ? orig_data.extract_wrapped_ref_value() : orig_data;
             const rttr::type wrapped_type = wrapped_val.get_type();
             rttr::variant data = wrapped_type.is_pointer() 
                     ? wrapped_val.extract_pointer_value() : wrapped_val;
@@ -113,7 +113,7 @@ namespace serde {
     };
 
     template <>
-    struct serde_adaptor<yaml, rttr::variant_polymoph_view, type::poly_t> {
+    struct serde_adaptor<yaml, rttr::variant_polymoph_view, detail::poly_t> {
         using type_checker = serde_type_checker<yaml>;
         using Container = rttr::variant_polymoph_view;
         using E = rttr::variant;
@@ -140,13 +140,13 @@ namespace serde {
             if (!data.is_valid()) return;
             if(key.empty()) {
                 auto& obj = s;
-                std::string type_name = data.get_type_name();
+                std::string type_name = data.get_real_type().get_name().to_string();
                 obj["$typeName"] = serialize<yaml>(type_name);
                 rttr::variant value = data.get_value();
                 obj["$content"] = serialize<yaml>(value);
             } else {
                 auto obj = s[std::string{key}];
-                std::string type_name = data.get_type_name();
+                std::string type_name = data.get_real_type().get_name().to_string();
                 obj["$typeName"] = serialize<yaml>(type_name);
                 rttr::variant value = data.get_value();
                 obj["$content"] = serialize<yaml>(value);
@@ -155,7 +155,7 @@ namespace serde {
     };
 
     template <>
-    struct serde_adaptor<yaml, rttr::variant_sequential_view, type::seq_t> {
+    struct serde_adaptor<yaml, rttr::variant_sequential_view, detail::seq_t> {
         using type_checker = serde_type_checker<yaml>;
         using Sequent = rttr::variant_sequential_view;
         using E = rttr::variant;
@@ -169,7 +169,7 @@ namespace serde {
 
                     E orig_value = seq.get_value(i);
                     rttr::type value_type1 = orig_value.get_type();
-                    E value = orig_value.get_type().is_wrapper() ? orig_value.extract_wrapped_value() : orig_value;
+                    E value = orig_value.get_type().is_wrapper() ? orig_value.extract_wrapped_ptr_value() : orig_value;
                     rttr::type value_type = value.get_type();
 
                     deserialize_to(jvalue, value);
@@ -184,7 +184,7 @@ namespace serde {
 
                     E orig_value = seq.get_value(i);
                     rttr::type value_type1 = orig_value.get_type();
-                    E value = orig_value.get_type().is_wrapper() ? orig_value.extract_wrapped_value() : orig_value;
+                    E value = orig_value.get_type().is_wrapper() ? orig_value.extract_wrapped_ptr_value() : orig_value;
                     rttr::type value_type = value.get_type();
 
                     deserialize_to(jvalue, value);
@@ -205,7 +205,7 @@ namespace serde {
     };
 
     template <>
-    struct serde_adaptor<yaml, rttr::variant_associative_view, type::map_t> {
+    struct serde_adaptor<yaml, rttr::variant_associative_view, detail::map_t> {
         using type_checker = serde_type_checker<yaml>;
         using Map = rttr::variant_associative_view;
         using E = rttr::variant;
@@ -215,7 +215,7 @@ namespace serde {
 
                 if (map.is_key_only_type()) {
                     const rttr::type orig_key_type = map.get_key_type();
-                    if (serde_rttr_type_checker::is_basic(orig_key_type)) {
+                    if (detail::rttr_type_is_basic(orig_key_type)) {
                         for(std::size_t i=0; i<arr.size(); ++i) {
                             auto jvalue = arr[i];
                             E key;
@@ -232,7 +232,7 @@ namespace serde {
                             auto jvalue = arr[i];
                             E orig_key = orig_key_type.create();
                             E key = orig_key.get_type().get_raw_type().is_wrapper() 
-                                    ? orig_key.extract_wrapped_value() : orig_key;
+                                    ? orig_key.extract_wrapped_ptr_value() : orig_key;
                             deserialize_to(jvalue, key);
                             if (key.get_type() != orig_key_type) {
                                 if (!key.convert(orig_key_type)) {
@@ -246,8 +246,8 @@ namespace serde {
                     const rttr::type orig_key_type = map.get_key_type();
                     const rttr::type orig_value_type = map.get_value_type();
                     bool ok = false;
-                    if (serde_rttr_type_checker::is_basic(orig_key_type)) {
-                        if (serde_rttr_type_checker::is_basic(orig_value_type)) {
+                    if (detail::rttr_type_is_basic(orig_key_type)) {
+                        if (detail::rttr_type_is_basic(orig_value_type)) {
                             for(auto it = arr.begin(); it!=arr.end(); ++it) {
                                 auto jkey = it->first, jvalue = it->second;
 
@@ -279,7 +279,7 @@ namespace serde {
 
                                 E orig_value = orig_value_type.create();
                                 rttr::type value_type1 = orig_value.get_type();
-                                E value = orig_value.get_type().is_wrapper() ? orig_value.extract_wrapped_value() : orig_value;
+                                E value = orig_value.get_type().is_wrapper() ? orig_value.extract_wrapped_ptr_value() : orig_value;
                                 rttr::type value_type = value.get_type();
                                 deserialize_to(jvalue, value);
                                 if (key.get_type() != orig_key_type) {
@@ -297,13 +297,13 @@ namespace serde {
                         }
                     } 
                     else {
-                        if (serde_rttr_type_checker::is_basic(orig_value_type)) {
+                        if (detail::rttr_type_is_basic(orig_value_type)) {
                             for(std::size_t i=0; i<arr.size(); ++i) {
                                 auto jvalue = arr[i];
                                 E orig_key = orig_key_type.create(); 
                                 rttr::type key_type1 = orig_key.get_type();
                                 E key = key_type1.get_raw_type().is_wrapper() 
-                                        ? orig_key.extract_wrapped_value() : orig_key;
+                                        ? orig_key.extract_wrapped_ptr_value() : orig_key;
                                 rttr::type key_type = key.get_type();
 
                                 E value;
@@ -327,11 +327,11 @@ namespace serde {
                                 E orig_key = orig_key_type.create(); 
                                 rttr::type key_type1 = orig_key.get_type();
                                 E key = key_type1.get_raw_type().is_wrapper() 
-                                        ? orig_key.extract_wrapped_value() : orig_key;
+                                        ? orig_key.extract_wrapped_ptr_value() : orig_key;
                                 rttr::type key_type = key.get_type();
                                 E orig_value = orig_value_type.create();
                                 E value = orig_value.get_type().get_raw_type().is_wrapper() 
-                                        ? orig_value.extract_wrapped_value() : orig_value;
+                                        ? orig_value.extract_wrapped_ptr_value() : orig_value;
                                 deserialize_to(jvalue["key"], key);
                                 deserialize_to(jvalue["value"], value);
                                 if (key.get_type() != orig_key_type) {
@@ -355,7 +355,7 @@ namespace serde {
 
                 if (map.is_key_only_type()) {
                     const rttr::type orig_key_type = map.get_key_type();
-                    if (serde_rttr_type_checker::is_basic(orig_key_type)) {
+                    if (detail::rttr_type_is_basic(orig_key_type)) {
                         for(std::size_t i=0; i<arr.size(); ++i) {
                             auto jvalue = arr[i];
                             E key;
@@ -372,7 +372,7 @@ namespace serde {
                             auto jvalue = arr[i];
                             E orig_key = orig_key_type.create();
                             E key = orig_key.get_type().get_raw_type().is_wrapper() 
-                                    ? orig_key.extract_wrapped_value() : orig_key;
+                                    ? orig_key.extract_wrapped_ptr_value() : orig_key;
                             deserialize_to(jvalue, key);
                             if (key.get_type() != orig_key_type) {
                                 if (!key.convert(orig_key_type)) {
@@ -386,8 +386,8 @@ namespace serde {
                     const rttr::type orig_key_type = map.get_key_type();
                     const rttr::type orig_value_type = map.get_value_type();
                     bool ok = false;
-                    if (serde_rttr_type_checker::is_basic(orig_key_type)) {
-                        if (serde_rttr_type_checker::is_basic(orig_value_type)) {
+                    if (detail::rttr_type_is_basic(orig_key_type)) {
+                        if (detail::rttr_type_is_basic(orig_value_type)) {
                             for(auto it = arr.begin(); it!=arr.end(); ++it) {
                                 auto jkey = it->first, jvalue = it->second;
 
@@ -418,7 +418,7 @@ namespace serde {
 
                                 E orig_value = orig_value_type.create();
                                 rttr::type value_type1 = orig_value.get_type();
-                                E value = orig_value.get_type().is_wrapper() ? orig_value.extract_wrapped_value() : orig_value;
+                                E value = orig_value.get_type().is_wrapper() ? orig_value.extract_wrapped_ptr_value() : orig_value;
                                 rttr::type value_type = value.get_type();
                                 deserialize_to(jvalue, value);
                                 if (key.get_type() != orig_key_type) {
@@ -436,13 +436,13 @@ namespace serde {
                         }
                     } 
                     else {
-                        if (serde_rttr_type_checker::is_basic(orig_value_type)) {
+                        if (detail::rttr_type_is_basic(orig_value_type)) {
                             for(std::size_t i=0; i<arr.size(); ++i) {
                                 auto jvalue = arr[i];
                                 E orig_key = orig_key_type.create(); 
                                 rttr::type key_type1 = orig_key.get_type();
                                 E key = key_type1.get_raw_type().is_wrapper() 
-                                        ? orig_key.extract_wrapped_value() : orig_key;
+                                        ? orig_key.extract_wrapped_ptr_value() : orig_key;
                                 rttr::type key_type = key.get_type();
 
                                 E value;
@@ -466,11 +466,11 @@ namespace serde {
                                 E orig_key = orig_key_type.create(); 
                                 rttr::type key_type1 = orig_key.get_type();
                                 E key = key_type1.get_raw_type().is_wrapper() 
-                                        ? orig_key.extract_wrapped_value() : orig_key;
+                                        ? orig_key.extract_wrapped_ptr_value() : orig_key;
                                 rttr::type key_type = key.get_type();
                                 E orig_value = orig_value_type.create();
                                 E value = orig_value.get_type().get_raw_type().is_wrapper() 
-                                        ? orig_value.extract_wrapped_value() : orig_value;
+                                        ? orig_value.extract_wrapped_ptr_value() : orig_value;
                                 deserialize_to(jvalue["key"], key);
                                 deserialize_to(jvalue["value"], value);
                                 if (key.get_type() != orig_key_type) {
@@ -500,22 +500,22 @@ namespace serde {
                     }
                 } else {
                     auto key_type = data.get_key_type();
-                    for(auto& [key_, value_] : data) { 
-                        bool ok = false;
-                        auto str_key = key_.to_string(&ok);
-                        if (ok) {
+                    if (detail::rttr_type_is_basic(key_type.get_raw_type())) {
+                        for(auto& [key_, value_] : data) { 
+                            bool ok = false;
+                            auto str_key = key_.to_string(&ok);
+                            if (!ok) {
+                                continue;
+                            }
                             map[str_key] = serialize<yaml>(value_); 
-                            continue;
                         }
-                        auto num_key = key_.to_int(&ok);
-                        if (ok) {
-                            map[num_key] = serialize<yaml>(value_); 
-                            continue;
+                    } else {
+                        for(auto& [key_, value_] : data) { 
+                            yaml obj_value; 
+                            obj_value["key"] = serialize<yaml>(key_);
+                            obj_value["value"] = serialize<yaml>(value_);
+                            map.push_back(obj_value); 
                         }
-                        yaml obj_value; 
-                        obj_value["key"] = serialize<yaml>(key_);
-                        obj_value["value"] = serialize<yaml>(value_);
-                        map.push_back(obj_value); 
                     }
                 }
             } else {
@@ -527,22 +527,22 @@ namespace serde {
                     }
                 } else {
                     auto key_type = data.get_key_type();
-                    for(auto& [key_, value_] : data) { 
-                        bool ok = false;
-                        auto str_key = key_.to_string(&ok);
-                        if (ok) {
+                    if (detail::rttr_type_is_basic(key_type.get_raw_type())) {
+                        for(auto& [key_, value_] : data) { 
+                            bool ok = false;
+                            auto str_key = key_.to_string(&ok);
+                            if (!ok) {
+                                continue;
+                            }
                             map[str_key] = serialize<yaml>(value_); 
-                            continue;
                         }
-                        auto num_key = key_.to_int(&ok);
-                        if (ok) {
-                            map[num_key] = serialize<yaml>(value_); 
-                            continue;
+                    } else {
+                        for(auto& [key_, value_] : data) { 
+                            yaml obj_value; 
+                            obj_value["key"] = serialize<yaml>(key_);
+                            obj_value["value"] = serialize<yaml>(value_);
+                            map.push_back(obj_value); 
                         }
-                        yaml obj_value; 
-                        obj_value["key"] = serialize<yaml>(key_);
-                        obj_value["value"] = serialize<yaml>(value_);
-                        map.push_back(obj_value); 
                     }
                 }
             }
@@ -550,7 +550,7 @@ namespace serde {
     };
 
     template<>
-    struct serde_adaptor<yaml, rttr::variant, type::struct_t> {
+    struct serde_adaptor<yaml, rttr::variant, detail::struct_t> {
         using Object = rttr::variant;
         static void from(yaml& s, std::string_view key, Object& orig_data) {
             rttr::type orig_type = orig_data.get_type();

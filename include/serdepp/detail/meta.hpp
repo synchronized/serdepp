@@ -18,7 +18,7 @@
 #ifndef __SERDEPP_META_HPP__
 #define __SERDEPP_META_HPP__
 
-namespace serde::meta {
+namespace serde::detail {
     template<class T>
     struct remove_cvref {
         typedef std::remove_cv_t<std::remove_reference_t<T>> type;
@@ -54,13 +54,15 @@ namespace serde::meta {
         : std::true_type {};
     template<class T> constexpr auto is_iterable_v = is_iterable<T>::value;
 
-    template <typename T, typename = void> struct is_arrayable : std::false_type {};
+    template <typename T, typename = void> 
+    struct is_reserveable : std::false_type {};
     template <typename T>
-    struct is_arrayable<T, std::void_t<decltype(std::declval<T>().begin()),
+    struct is_reserveable<T, std::void_t<decltype(std::declval<T>().begin()),
                                        decltype(std::declval<T>().end()),
                                        decltype(std::declval<T>().reserve(0))>
                         > : std::true_type {};
-    template<class T> constexpr auto is_arrayable_v = is_arrayable<T>::value;
+    template<class T> 
+    constexpr auto is_reserveable_v = is_reserveable<T>::value;
 
     template <typename T, typename = void> struct is_emptyable : std::false_type {};
 
@@ -166,10 +168,12 @@ namespace serde::meta {
     template<typename T>  inline constexpr auto is_str_v = is_str_type<T>::value;
 
 
-    template<typename T, typename = void> struct is_optional : std::false_type {};
-    template<typename T> struct is_optional<T,std::void_t<decltype(std::declval<T>().has_value()),
-                                                          decltype(std::declval<T>().value())
-                                                          >> : std::true_type {};
+    template<typename T, typename = void> 
+    struct is_optional : std::false_type {};
+    template<typename T> 
+    struct is_optional<T, std::void_t<decltype(std::declval<T>().has_value()),
+            decltype(std::declval<T>().value())
+            >> : std::true_type {};
     template<typename T> inline constexpr auto is_optional_v = is_optional<T>::value;
 
     template<typename T, typename = void> struct is_default : std::false_type {};
@@ -191,6 +195,28 @@ namespace serde::meta {
     template<typename Attribute, typename T>
     using attr = typename Attribute::template serde_attribute<T>;
 
+
+    template <typename T, typename = void> struct not_null;
+
+    template <typename T>
+    struct not_null<T, std::enable_if_t<detail::is_emptyable_v<T>>> {
+        not_null(T &origin) : data(origin) {}
+        T &data;
+    };
+
+    template <typename T> using optional_element_t = typename is_optional<T>::element;
+
+    template <class T> struct is_not_null {
+        using type = T;
+        using element = T;
+        constexpr static bool value = false;
+    };
+
+    template <class T> struct is_not_null<not_null<T>> {
+        using type = not_null<T>;
+        using element = T;
+        constexpr static bool value = true;
+    };
 }
 
 #endif

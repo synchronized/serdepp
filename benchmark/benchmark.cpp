@@ -1,15 +1,18 @@
-#include <benchmark/benchmark.h>
 #include <map>
-#include <nameof.hpp>
 #include <optional>
 #include <variant>
-#include <serdepp/serializer.hpp>
-#include <serdepp/adaptor/nlohmann_json.hpp>
-#include <serdepp/adaptor/toml11.hpp>
-#include <serdepp/adaptor/yaml-cpp.hpp>
-#include <serdepp/adaptor/rapidjson.hpp>
+
+#include <nameof.hpp>
 #include <fmt/format.h>
-#include <serdepp/utility.hpp>
+#include <catch2/catch_all.hpp>
+
+#include "serdepp/serializer.hpp"
+#include "serdepp/adaptor/nlohmann_json.hpp"
+#include "serdepp/adaptor/toml11.hpp"
+#include "serdepp/adaptor/yaml-cpp.hpp"
+#include "serdepp/adaptor/rapidjson.hpp"
+#include "serdepp/utility.hpp"
+
 
 struct test {
     DERIVE_SERDE(test,
@@ -60,32 +63,40 @@ test base_t = serde::deserialize<test>(json_v);
 //)"_toml;
 
 
-static void nljson_set_se_bench(benchmark::State& state) {
-    auto test_data = json_v;
-    for(auto _ : state) {
-        serde::deserialize<test>(test_data);
-    }
+TEST_CASE("nljson_set_se_bench") {
+    BENCHMARK_ADVANCED("serdepp")(Catch::Benchmark::Chronometer meter) {
+        auto test_data = json_v;
+        meter.measure([&] { 
+            serde::deserialize<test>(test_data);
+        });
+    };
 }
 
-static void nljson_set_nl_bench(benchmark::State& state) {
-    auto test_data = json_v;
-    for(auto _ : state) {
-        auto v = test_data.get<ns::nl_test>();
-    }
+TEST_CASE("nljson_set_nl_bench") {
+    BENCHMARK_ADVANCED("serdepp")(Catch::Benchmark::Chronometer meter) {
+        auto test_data = json_v;
+        meter.measure([&] { 
+            auto v = test_data.get<ns::nl_test>();
+        });
+    };
 }
 
-static void nljson_get_se_bench(benchmark::State& state) {
-    auto test_data = base_t;
-    for(auto _ : state) {
-        serde::serialize<nlohmann::json>(test_data);
-    }
+TEST_CASE("nljson_get_se_bench") {
+    BENCHMARK_ADVANCED("serdepp")(Catch::Benchmark::Chronometer meter) {
+        auto test_data = base_t;
+        meter.measure([&] { 
+            serde::serialize<nlohmann::json>(test_data);
+        });
+    };
 }
 
-static void nljson_get_nl_bench(benchmark::State& state) {
-    ns::nl_test t = serde::deserialize<ns::nl_test>(json_v);
-    for(auto _ : state) {
-         nlohmann::json{t};
-    }
+TEST_CASE("nljson_get_nl_bench") {
+    BENCHMARK_ADVANCED("serdepp")(Catch::Benchmark::Chronometer meter) {
+        ns::nl_test t = serde::deserialize<ns::nl_test>(json_v);
+        meter.measure([&] { 
+            nlohmann::json{t};
+        });
+    };
 }
 
 namespace ext
@@ -122,32 +133,40 @@ struct test
 };
 } // ext
 
-static void toml11_set_se_bench(benchmark::State& state) {
-    toml::value toml_v = serde::serialize<toml::value>(base_t);
-    for(auto _ : state) {
-        serde::deserialize<test>(toml_v);
-    }
+TEST_CASE("toml11_set_se_bench") {
+    BENCHMARK_ADVANCED("serdepp")(Catch::Benchmark::Chronometer meter) {
+        toml::value toml_v = serde::serialize<toml::value>(base_t);
+        meter.measure([&] { 
+            serde::deserialize<test>(toml_v);
+        });
+    };
 }
 
-static void toml11_set_tl_bench(benchmark::State& state) {
-    toml::value toml_v = serde::serialize<toml::value>(base_t);
-    for(auto _ : state) {
-        toml::get<ext::test>(toml_v);
-    }
+TEST_CASE("toml11_set_tl_bench") {
+    BENCHMARK_ADVANCED("serdepp")(Catch::Benchmark::Chronometer meter) {
+        toml::value toml_v = serde::serialize<toml::value>(base_t);
+        meter.measure([&] { 
+            toml::get<ext::test>(toml_v);
+        });
+    };
 }
 
-static void toml11_get_se_bench(benchmark::State& state) {
-    auto test_data = base_t;
-    for(auto _ : state) {
-        serde::serialize<serde::toml_v>(test_data);
-    }
+TEST_CASE("toml11_get_se_bench") {
+    BENCHMARK_ADVANCED("serdepp")(Catch::Benchmark::Chronometer meter) {
+        auto test_data = base_t;
+        meter.measure([&] { 
+            serde::serialize<serde::toml_v>(test_data);
+        });
+    };
 }
 
-static void toml11_get_tl_bench(benchmark::State& state) {
-    ext::test t = serde::deserialize<ext::test>(json_v);
-    for(auto _ : state) {
-        toml::value v(t);
-    }
+TEST_CASE("toml11_get_tl_bench") {
+    BENCHMARK_ADVANCED("serdepp")(Catch::Benchmark::Chronometer meter) {
+        ext::test t = serde::deserialize<ext::test>(json_v);
+        meter.measure([&] { 
+            toml::value v(t);
+        });
+    };
 }
 
 namespace YAML {
@@ -171,78 +190,75 @@ namespace YAML {
     };
 }
 
-static void yaml_set_se_bench(benchmark::State& state) {
-    YAML::Node yaml_v = serde::serialize<YAML::Node>(base_t);
-    for(auto _ : state) {
-        serde::deserialize<test>(yaml_v);
-    }
+TEST_CASE("yaml_set_se_bench") {
+    BENCHMARK_ADVANCED("serdepp")(Catch::Benchmark::Chronometer meter) {
+        YAML::Node yaml_v = serde::serialize<YAML::Node>(base_t);
+        meter.measure([&] { 
+            serde::deserialize<test>(yaml_v);
+        });
+    };
 }
 
-static void yaml_set_tl_bench(benchmark::State& state) {
-    YAML::Node yaml_v = serde::serialize<YAML::Node>(base_t);
-    for(auto _ : state) {
-        yaml_v.as<test>();
-    }
+TEST_CASE("yaml_set_tl_bench") {
+    BENCHMARK_ADVANCED("serdepp")(Catch::Benchmark::Chronometer meter) {
+        YAML::Node yaml_v = serde::serialize<YAML::Node>(base_t);
+        meter.measure([&] { 
+            yaml_v.as<test>();
+        });
+    };
 }
 
-static void yaml_get_se_bench(benchmark::State& state) {
-    auto test_data = base_t;
-    for(auto _ : state) {
-        serde::serialize<serde::yaml>(test_data);
-    }
+TEST_CASE("yaml_get_se_bench") {
+    BENCHMARK_ADVANCED("serdepp")(Catch::Benchmark::Chronometer meter) {
+        auto test_data = base_t;
+        meter.measure([&] { 
+            serde::serialize<serde::yaml>(test_data);
+        });
+    };
 }
 
-static void yaml_get_tl_bench(benchmark::State& state) {
-    auto test_data = base_t;
-    for(auto _ : state) {
-        YAML::Node v(test_data);
-    }
+TEST_CASE("yaml_get_tl_bench") {
+    BENCHMARK_ADVANCED("serdepp")(Catch::Benchmark::Chronometer meter) {
+        auto test_data = base_t;
+        meter.measure([&] { 
+            YAML::Node v(test_data);
+        });
+    };
 }
 
-static void rapid_json_set_se_bench(benchmark::State& state) {
-    rapidjson::Document rapid_v = serde::serialize<rapidjson::Document>(base_t);
-    for(auto _ : state) {
-        serde::deserialize<test>(rapid_v);
-    }
+TEST_CASE("rapid_json_set_se_bench") {
+    BENCHMARK_ADVANCED("serdepp")(Catch::Benchmark::Chronometer meter) {
+        rapidjson::Document rapid_v = serde::serialize<rapidjson::Document>(base_t);
+        meter.measure([&] { 
+            serde::deserialize<test>(rapid_v);
+        });
+    };
 }
 
-[[maybe_unused]]
-static void rapid_json_set_tl_bench(benchmark::State& state) {
-    rapidjson::Document rapid_v = serde::serialize<rapidjson::Document>(base_t);
-    for(auto _ : state) {
-        //rapid_v.as<test>();
-    }
+//TEST_CASE("rapid_json_set_tl_bench") {
+//    BENCHMARK_ADVANCED("serdepp")(Catch::Benchmark::Chronometer meter) {
+//        rapidjson::Document rapid_v = serde::serialize<rapidjson::Document>(base_t);
+//        meter.measure([&] { 
+//            //rapid_v.as<test>();
+//        });
+//    };
+//}
+
+TEST_CASE("rapid_json_get_se_bench") {
+    BENCHMARK_ADVANCED("serdepp")(Catch::Benchmark::Chronometer meter) {
+        auto test_data = base_t;
+        meter.measure([&] { 
+            serde::serialize<rapidjson::Document>(test_data);
+        });
+    };
 }
 
-static void rapid_json_get_se_bench(benchmark::State& state) {
-    auto test_data = base_t;
-    for(auto _ : state) {
-        serde::serialize<rapidjson::Document>(test_data);
-    }
-}
-
-[[maybe_unused]]
-static void rapid_json_get_tl_bench(benchmark::State& state) {
-    auto test_data = base_t;
-    for(auto _ : state) {
-        //RAPID_JSON::Node v(base_t);
-    }
-}
-
-BENCHMARK(nljson_set_se_bench);
-BENCHMARK(nljson_set_nl_bench);
-BENCHMARK(nljson_get_se_bench);
-BENCHMARK(nljson_get_nl_bench);
-BENCHMARK(toml11_set_se_bench);
-BENCHMARK(toml11_set_tl_bench);
-BENCHMARK(toml11_get_se_bench);
-BENCHMARK(toml11_get_tl_bench);
-BENCHMARK(yaml_set_se_bench);
-BENCHMARK(yaml_set_tl_bench);
-BENCHMARK(yaml_get_se_bench);
-BENCHMARK(yaml_get_tl_bench);
-BENCHMARK(rapid_json_set_se_bench);
-//BENCHMARK(rapid_json_set_tl_bench);
-BENCHMARK(rapid_json_get_se_bench);
-//BENCHMARK(rapid_json_get_tl_bench);
-BENCHMARK_MAIN();
+//[[maybe_unused]]
+//TEST_CASE("rapid_json_get_tl_bench") {
+//    BENCHMARK_ADVANCED("serdepp")(Catch::Benchmark::Chronometer meter) {
+//        auto test_data = base_t;
+//        meter.measure([&] { 
+//            //RAPID_JSON::Node v(base_t);
+//        });
+//    };
+//}

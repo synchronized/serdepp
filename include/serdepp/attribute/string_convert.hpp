@@ -16,8 +16,8 @@ namespace serde::attribute {
             template<typename T, typename serde_ctx, typename Next, typename ...Attributes>
             inline void from(serde_ctx& ctx, T& data, std::string_view key,
                              Next&& next_attr, Attributes&&... remains) const{
-                if constexpr(meta::is_enumable_v<ET>) {
-                    enum_data_ = type::enum_t::from_str<ET>(data);
+                if constexpr(serde::detail::is_enumable_v<ET>) {
+                    enum_data_ = serde::detail::enum_t::from_str<ET>(data);
                 } else {
                     throw serde::attribute_error("requried enum type");
                 }
@@ -26,8 +26,8 @@ namespace serde::attribute {
             template<typename T, typename serde_ctx, typename Next, typename ...Attributes>
             inline void into(serde_ctx& ctx, T& data, std::string_view key,
                              Next&& next_attr, Attributes&&... remains) const{
-                if constexpr(meta::is_enumable_v<ET>) {
-                    data = type::enum_t::to_str(enum_data_);
+                if constexpr(serde::detail::is_enumable_v<ET>) {
+                    data = serde::detail::enum_t::to_str(enum_data_);
                     next_attr.template into<std::string, serde_ctx>(ctx, data, key, remains...);
                 } else {
                     throw serde::attribute_error("requried enum type");
@@ -36,8 +36,8 @@ namespace serde::attribute {
 
             template<typename T, typename serde_ctx>
             inline void from(serde_ctx& ctx, T& data, std::string_view key) {
-                if constexpr(meta::is_enumable_v<ET>) {
-                    enum_data_ = type::enum_t::from_str<ET>(data);
+                if constexpr(serde::detail::is_enumable_v<ET>) {
+                    enum_data_ = serde::detail::enum_t::from_str<ET>(data);
                 } else {
                     throw serde::attribute_error("this attribute requried enum type");
                 }
@@ -45,8 +45,8 @@ namespace serde::attribute {
 
             template<typename T, typename serde_ctx>
             inline void into(serde_ctx& ctx, T& data, std::string_view key) const{
-                if constexpr(meta::is_enumable_v<ET>) {
-                    data = type::enum_t::to_str(enum_data_);
+                if constexpr(serde::detail::is_enumable_v<ET>) {
+                    data = serde::detail::enum_t::to_str(enum_data_);
                 } else {
                     throw serde::attribute_error("this attribute requried enum type");
                 }
@@ -58,15 +58,15 @@ namespace serde::attribute {
             template<typename T, typename serde_ctx, typename Next, typename ...Attributes>
             inline void from(serde_ctx& ctx, T& data, std::string_view key,
                              Next&& next_attr, Attributes&&... remains) const {
-                if constexpr (meta::is_optional_v<T>) {
+                if constexpr (serde::detail::is_optional_v<T>) {
                     skip_if_null.from(ctx, data, key, to_upper{}, next_attr, remains...);
                 }
-                else if constexpr(meta::is_enumable_v<T>) {
+                else if constexpr(serde::detail::is_enumable_v<T>) {
                     std::string buffer;
                     next_attr.template from<std::string, serde_ctx>(ctx, buffer, key, remains...,
                                                                     transform{::tolower, ::toupper}, str_enum{data});
                 }
-                else if constexpr(meta::is_str_v<T>) {
+                else if constexpr(serde::detail::is_str_v<T>) {
                   if constexpr (is_serializer_call_v<Next>) {
                     next_attr.from(ctx, data, key, transform{::tolower, ::toupper}, remains...);
                   } else {
@@ -81,15 +81,15 @@ namespace serde::attribute {
             template<typename T, typename serde_ctx, typename Next, typename ...Attributes>
             inline void into(serde_ctx& ctx, T& data, std::string_view key,
                                     Next&& next_attr, Attributes&&... remains) const{
-                if constexpr (meta::is_optional_v<T>) {
+                if constexpr (serde::detail::is_optional_v<T>) {
                     skip_if_null.into(ctx, data, key, to_upper{}, next_attr, remains...);
                 }
-                else if constexpr(meta::is_enumable_v<T>) {
+                else if constexpr(serde::detail::is_enumable_v<T>) {
                     std::string buffer;
                     auto se = str_enum(data);
                     se.into(ctx, buffer, key, transform{::tolower, ::toupper}, next_attr, remains...);
                 }
-                else if constexpr(meta::is_str_v<T>) {
+                else if constexpr(serde::detail::is_str_v<T>) {
                     std::string buffer = data;
                     transform{::tolower, ::toupper}.into(ctx, buffer, key, next_attr , remains...);
                 }
@@ -103,15 +103,15 @@ namespace serde::attribute {
             template<typename T, typename serde_ctx, typename Next, typename ...Attributes>
             inline void from(serde_ctx& ctx, T& data, std::string_view key,
                              Next&& next_attr, Attributes&&... remains) const {
-                if constexpr (meta::is_optional_v<T>) {
+                if constexpr (serde::detail::is_optional_v<T>) {
                     skip_if_null.from(ctx, data, key, to_lower{}, next_attr, remains...);
                 }
-                else if constexpr(meta::is_enumable_v<T>) {
+                else if constexpr(serde::detail::is_enumable_v<T>) {
                     std::string buffer;
                     next_attr.template from<std::string>(ctx, buffer, key, remains...,
                                                          transform{::toupper, ::tolower}, str_enum{data});
                 }
-                else if constexpr(meta::is_str_v<T>) {
+                else if constexpr(serde::detail::is_str_v<T>) {
                   if constexpr (is_serializer_call_v<Next>) {
                     next_attr.from(ctx, data, key, transform{::toupper, ::tolower}, remains...);
                   } else {
@@ -126,17 +126,17 @@ namespace serde::attribute {
             template<typename T, typename serde_ctx, typename Next, typename ...Attributes>
             inline void into(serde_ctx& ctx, T& data, std::string_view key,
                                     Next&& next_attr, Attributes&&... remains) const{
-                if constexpr (meta::is_optional_v<T>) {
+                if constexpr (serde::detail::is_optional_v<T>) {
                     skip_if_null.into(ctx, data, key, to_lower{}, next_attr, remains...);
                 }
-                else if constexpr(meta::is_enumable_v<T>) {
+                else if constexpr(serde::detail::is_enumable_v<T>) {
                     std::string buffer;
                     auto se = str_enum(data);
                     se.template into<std::string, serde_ctx>(ctx, buffer, key,
                                                              transform{::toupper, ::tolower},
                                                              next_attr, remains...);
                 }
-                else if constexpr(meta::is_str_v<T>) {
+                else if constexpr(serde::detail::is_str_v<T>) {
                     std::string buffer = data;
                     transform{::toupper, ::tolower}.into(ctx, data, key, next_attr, remains...);
                 }
@@ -154,15 +154,15 @@ namespace serde::attribute {
             template<typename T, typename serde_ctx, typename Next, typename ...Attributes>
             inline void from(serde_ctx& ctx, T& data, std::string_view key,
                              Next&& next_attr, Attributes&&... remains) const {
-                if constexpr (meta::is_optional_v<T>) {
+                if constexpr (serde::detail::is_optional_v<T>) {
                     skip_if_null.from(ctx, data, key, under_to_dash{}, next_attr, remains...);
                 }
-                else if constexpr(meta::is_enumable_v<T>) {
+                else if constexpr(serde::detail::is_enumable_v<T>) {
                     std::string buffer;
                     next_attr.template from<std::string, serde_ctx>(ctx, buffer, key, remains...,
                                                                     transform{to_under, to_dash}, str_enum{data});
                 }
-                else if constexpr(meta::is_str_v<T>) {
+                else if constexpr(serde::detail::is_str_v<T>) {
                     if constexpr(is_serializer_call_v<Next>) {
                         next_attr.from(ctx, data, key, transform{to_under, to_dash}, remains...);
                     } else {
@@ -177,17 +177,17 @@ namespace serde::attribute {
             template<typename T, typename serde_ctx, typename Next, typename ...Attributes>
             inline void into(serde_ctx& ctx, T& data, std::string_view key,
                                     Next&& next_attr, Attributes&&... remains) const{
-                if constexpr (meta::is_optional_v<T>) {
+                if constexpr (serde::detail::is_optional_v<T>) {
                     skip_if_null.into(ctx, data, key, under_to_dash{}, next_attr, remains...);
                 }
-                else if constexpr(meta::is_enumable_v<T>) {
+                else if constexpr(serde::detail::is_enumable_v<T>) {
                     std::string buffer;
                     auto se = str_enum(data);
                     se.template into<std::string, serde_ctx>(ctx, buffer, key,
                                                              transform{to_under, to_dash},
                                                              next_attr, remains...);
                 }
-                else if constexpr(meta::is_str_v<T>) {
+                else if constexpr(serde::detail::is_str_v<T>) {
                     std::string buffer = data;
                     transform{to_under, to_dash}.into(ctx, buffer, key, next_attr , remains...);
                 }

@@ -5,9 +5,18 @@
 
 #define JSON_HAS_CPP_17 // nlohmann_json string_view support macro
 
-#include <nlohmann/json.hpp>
-#include "serdepp/serializer.hpp"
 #include <fstream>
+#include <variant>
+
+#include <nlohmann/json.hpp>
+
+#include "serdepp/serializer.hpp"
+
+namespace serde {
+    std::string to_string(nlohmann::json& doc) {
+        return doc.dump();
+    }
+}
 
 namespace serde {
     template<> struct serde_type_checker<nlohmann::json> {
@@ -62,7 +71,7 @@ namespace serde {
     };
 
     template<typename T>
-    struct serde_adaptor<json, T, type::struct_t> {
+    struct serde_adaptor<json, T, detail::struct_t> {
         static void from(json& s, std::string_view key, T& data) {
             deserialize_to(s[std::string{key}], data);
         }
@@ -72,11 +81,11 @@ namespace serde {
     };
 
     template<typename T>
-    struct serde_adaptor<json, T, type::seq_t> {
-       using E = type::seq_e<T>;
+    struct serde_adaptor<json, T, detail::seq_t> {
+       using E = detail::seq_e<T>;
        static void from(json& s, std::string_view key, T& arr) {
            auto& table = key.empty() ? s : s.at(std::string{key});
-           if constexpr(is_arrayable_v<T>) arr.reserve(table.size());
+           if constexpr(detail::is_reserveable_v<T>) arr.reserve(table.size());
            for(auto& value : table) { arr.push_back(std::move(deserialize<E>(value))); }
        }
 
@@ -87,7 +96,7 @@ namespace serde {
     };
 
     template<typename E>
-    struct serde_adaptor<json, std::vector<E>, type::seq_t> {
+    struct serde_adaptor<json, std::vector<E>, detail::seq_t> {
         static void from(json& s, std::string_view key, std::vector<E>& arr) {
            auto& table = key.empty() ? s : s.at(std::string{key});
            arr.reserve(table.size());
@@ -101,8 +110,8 @@ namespace serde {
     };
 
     template <typename Map>
-    struct serde_adaptor<json, Map, type::map_t> {
-        using E = type::map_e<Map>;
+    struct serde_adaptor<json, Map, detail::map_t> {
+        using E = detail::map_e<Map>;
         inline static void from(json& s, std::string_view key, Map& map) {
             auto& table = key.empty() ? s : s.at(std::string{key});
             for(auto& [key_, value_] : table.items()) { deserialize_to<E>(value_, map[key_]); }
@@ -114,7 +123,7 @@ namespace serde {
     };
 
     template <typename K, typename E>
-    struct serde_adaptor<json, std::map<K,E>, type::map_t> {
+    struct serde_adaptor<json, std::map<K,E>, detail::map_t> {
         using Map = std::map<K,E>;
         inline static void from(json& s, std::string_view key, Map& map) {
             auto& table = key.empty() ? s : s.at(std::string{key});
@@ -126,6 +135,8 @@ namespace serde {
         }
     };
 }
+
+#include "serdepp/extend/rttr/nlohmann_json.hpp"
 
 #endif
 // strt_serde -> tag_to -> strt_serde -> tag_to -> ... -> adaptor_to -> adaptor_to

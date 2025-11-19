@@ -6,12 +6,22 @@
 #define RAPIDJSON_HAS_STDSTRING 1
 
 #include "serdepp/serializer.hpp"
+#include <fstream>
 #include <rapidjson/document.h>
 #include <rapidjson/istreamwrapper.h>
 #include <rapidjson/writer.h>
 #include <rapidjson/stringbuffer.h>
 #include <rapidjson/ostreamwrapper.h>
-#include <fstream>
+
+namespace serde {
+    std::string to_string(rapidjson::Document &doc) {
+        using namespace rapidjson;
+        StringBuffer buffer;
+        Writer<StringBuffer> writer(buffer);
+        doc.Accept(writer);
+        return buffer.GetString();
+    }
+}
 
 namespace serde {
     using rapidjson_type = rapidjson::Document;
@@ -134,7 +144,7 @@ namespace serde {
     };
 
     template<typename T>
-    struct serde_adaptor<rapidjson_type, T, type::struct_t> {
+    struct serde_adaptor<rapidjson_type, T, detail::struct_t> {
         static void from(rapidjson_type& s, std::string_view key, T& data) {
             using namespace rapidjson;
             auto& obj = s[key.data()];
@@ -150,7 +160,7 @@ namespace serde {
     };
 
     template<typename T>
-    struct serde_adaptor<rapidjson::Value, T, type::struct_t> {
+    struct serde_adaptor<rapidjson::Value, T, detail::struct_t> {
         static void from(rapidjson::Value& s, std::string_view key, T& data) {
             using namespace rapidjson;
             auto& obj = s[key.data()];
@@ -160,13 +170,13 @@ namespace serde {
     };
     
     template<typename T>
-    struct serde_adaptor<rapidjson_type, T, type::seq_t> {
-        using E = type::seq_e<T>;
+    struct serde_adaptor<rapidjson_type, T, detail::seq_t> {
+        using E = detail::seq_e<T>;
         static void from(rapidjson_type& s, std::string_view key, T& arr) {
             using namespace rapidjson;
             auto& table = key.empty() ? s : s[key.data()];
             if(!table.IsArray()) { return; }
-            if constexpr(is_arrayable_v<T>) arr.reserve(table.Size());
+            if constexpr(detail::is_reserveable_v<T>) arr.reserve(table.Size());
             for(unsigned int i = 0; i < table.Size(); ++i) {
                 arr.push_back(std::move(deserialize<E>(table[i])));
             }
@@ -193,13 +203,13 @@ namespace serde {
     };
 
     template<typename T>
-    struct serde_adaptor<rapidjson::Value, T, type::seq_t> {
-        using E = type::seq_e<T>;
+    struct serde_adaptor<rapidjson::Value, T, detail::seq_t> {
+        using E = detail::seq_e<T>;
         static void from(rapidjson::Value& s, std::string_view key, T& arr) {
             using namespace rapidjson;
             auto& table = key.empty() ? s : s[key.data()];
             if(!table.IsArray()) { return; }
-            if constexpr(is_arrayable_v<T>) arr.reserve(table.Size());
+            if constexpr(detail::is_reserveable_v<T>) arr.reserve(table.Size());
             for(unsigned int i = 0; i < table.Size(); ++i) {
                 arr.push_back(std::move(deserialize<E>(table[i])));
             }
@@ -207,8 +217,8 @@ namespace serde {
     };
     
     template <typename Map>
-    struct serde_adaptor<rapidjson_type, Map, type::map_t> {
-        using E = type::map_e<Map>;
+    struct serde_adaptor<rapidjson_type, Map, detail::map_t> {
+        using E = detail::map_e<Map>;
         inline static void from(rapidjson_type& s, std::string_view key, Map& map) {
             using namespace rapidjson;
             auto& table = key.empty() ? s : s[key.data()];
@@ -238,8 +248,8 @@ namespace serde {
 
 
     template <typename Map>
-    struct serde_adaptor<rapidjson::Value, Map, type::map_t> {
-        using E = type::map_e<Map>;
+    struct serde_adaptor<rapidjson::Value, Map, detail::map_t> {
+        using E = detail::map_e<Map>;
         inline static void from(rapidjson::Value& s, std::string_view key, Map& map) {
             using namespace rapidjson;
             auto& table = key.empty() ? s : s[key.data()];
@@ -251,5 +261,6 @@ namespace serde {
     };
 }
 
+#include "serdepp/extend/rttr/rapidjson.hpp"
 
 #endif

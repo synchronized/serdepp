@@ -12,7 +12,7 @@ namespace serde::attribute {
             constexpr inline void from(serde_ctx& ctx, T& data, std::string_view key,
                                        Next&& next_attr, Attributes&& ...remains) const{
                 using Helper = serde_adaptor_helper<typename serde_ctx::Adaptor>;
-                if constexpr (meta::is_emptyable_v<T>) {
+                if constexpr (serde::detail::is_emptyable_v<T>) {
                     if (Helper::is_null(ctx.adaptor, key)) {
                         if constexpr(std::is_same_v<T, bool>) {
                             data = false;

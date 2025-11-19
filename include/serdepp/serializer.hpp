@@ -13,183 +13,14 @@
 #include <type_traits>
 #include <variant>
 #include <string_view>
-#include <nameof.hpp>
 #include <functional>
 #include <algorithm>
 
-#include <magic_enum/magic_enum.hpp>
-#include "serdepp/meta.hpp"
-#include "serdepp/exception.hpp"
-
+#include "serdepp/detail/adaptor.hpp"
+#include "serdepp/detail/serializer_def.hpp"
 
 namespace serde
 {
-    using namespace serde::meta;
-
-    template <class Adaptor, typename=void> struct serde_adaptor_helper {
-        // for support optional type parse
-        inline constexpr static bool is_null(Adaptor& adaptor, std::string_view key);
-        // for support no_remain function
-        inline constexpr static size_t size(Adaptor& adaptor);
-        // for support string_or_struct
-        inline constexpr static bool is_struct(Adaptor& adaptor);
-        // for support parse_file
-        inline constexpr static Adaptor parse_file(const std::string& path);
-    };
-
-    template <class Adaptor>
-    struct derive_serde_adaptor_helper { // default serde adaptor helper
-        inline constexpr static bool is_null(Adaptor& adaptor, std::string_view key) {
-            throw serde::unimplemented_error("serde_adaptor<" +
-                                             std::string(nameof::nameof_short_type<Adaptor>())
-                                             +">::is_null(adaptor, key)");
-            return false;
-        }
-
-        inline constexpr static size_t size(Adaptor& adaptor) {
-            throw serde::unimplemented_error("serde_adaptor<" +
-                                             std::string(nameof::nameof_short_type<Adaptor>())
-                                             +">::size(adaptor, key)");
-            return 0;
-        }
-
-        inline constexpr static bool is_struct(Adaptor& adaptor) {
-            throw serde::unimplemented_error("serde_adaptor<" +
-                                             std::string(nameof::nameof_short_type<Adaptor>())
-                                             +">::is_struct(adaptor, key)");
-            return false;
-        }
-
-        inline constexpr static Adaptor parse_file(const std::string& path) {
-            throw serde::unimplemented_error("serde_adaptor<" +
-                                             std::string(nameof::nameof_short_type<Adaptor>())
-                                             +">::parse_file(adaptor, key)");
-            return Adaptor{};
-        }
-    };
-
-    template<typename S, typename T, typename = void>
-    struct serde_adaptor {
-        static void from(S& s, std::string_view key, T& data);
-        static void into(S &s, std::string_view key, const T &data);
-    };
-
-    namespace detail {
-        struct dummy_adaptor{};
-    };
-
-    template <> struct serde_adaptor_helper<detail::dummy_adaptor>
-        : derive_serde_adaptor_helper<detail::dummy_adaptor> {
-    };
-
-    template<class T, bool is_serialize_=false>
-    struct serde_context {
-        using Adaptor = T;
-        using Helper = serde_adaptor_helper<Adaptor>;
-        constexpr static bool is_serialize = is_serialize_;
-        constexpr serde_context(T& format) : adaptor(format) {}
-        T& adaptor;
-        size_t read_count_ = 0;
-        bool skip_all_ = false; 
-        constexpr void read() { read_count_++; }
-    };
-
-    namespace type {
-        struct basic_t{};
-        struct poly_t {};
-        struct seq_t {};
-        struct map_t {};
-        struct struct_t {};
-        struct enum_t {
-            template <class Enum>
-            inline constexpr static std::string_view to_str(Enum value) {
-                return magic_enum::enum_name(value);
-            }
-
-            template <class Enum>
-            inline constexpr static Enum from_str(std::string_view str) {
-                auto value = magic_enum::enum_cast<Enum>(str);
-                if (!value.has_value()) {
-                    throw enum_error(std::string{nameof::nameof_type<Enum>()} + "::" + std::string{str});
-                }
-                return *value;
-            }
-        };
-
-        template <typename T> using map_e = typename T::mapped_type;
-        template <typename T> using map_k = typename T::key_type;
-        template <typename T> using seq_e = typename T::value_type;
-        template <typename T> using opt_e = typename T::value_type;
-
-
-        template <typename T, typename = void> struct not_null;
-
-        template <typename T>
-        struct not_null<T, std::enable_if_t<is_emptyable_v<T>>> {
-            not_null(T &origin) : data(origin) {}
-            T &data;
-        };
-
-        template <class T> struct is_optional {
-            using type = T;
-            using element = T;
-            constexpr static bool value = false;
-        };
-
-        template <class T> struct is_optional<std::optional<T>> {
-            using type = std::optional<T>;
-            using element = T;
-            constexpr static bool value = true;
-        };
-
-        template <typename T> using optional_element = typename is_optional<T>::element;
-
-        template <class T> struct is_not_null {
-            using type = T;
-            using element = T;
-            constexpr static bool value = false;
-        };
-
-        template <class T> struct is_not_null<not_null<T>> {
-            using type = not_null<T>;
-            using element = T;
-            constexpr static bool value = true;
-        };
-
-        template <class T> using is_struct = is_serdeable<serde_context<detail::dummy_adaptor>, T>;
-        template <class T> inline constexpr auto is_struct_v = is_struct<T>::value;
-    }
-
-    template<typename T, typename serde_ctx, typename = void>
-    struct serde_serializer {
-        using Adaptor = typename serde_ctx::Adaptor;
-        constexpr inline static auto from(serde_ctx& ctx, T& data, std::string_view key) {
-            if constexpr(is_serdeable_v<serde_ctx, T>) {
-                if(key.empty()) {
-                    serde_context struct_ctx = serde_context<Adaptor>{ctx.adaptor};
-                    data.serde(struct_ctx, data);
-                } else {
-                    serde_adaptor<Adaptor, T, type::struct_t>::from(ctx.adaptor, key, data);
-                }
-            } else {
-                serde_adaptor<Adaptor, std::remove_reference_t<T>>::from(ctx.adaptor, key, data);
-            }
-            ctx.read();
-        }
-        constexpr inline static auto into(serde_ctx& ctx, const T& data, std::string_view key) {
-            if constexpr(is_serdeable_v<serde_ctx, T>) {
-                if(key.empty()) {
-                    auto struct_ctx = serde_context<Adaptor, true>(ctx.adaptor);
-                    data.serde(struct_ctx, const_cast<T&>(data));
-                } else {
-                    serde_adaptor<Adaptor, T, type::struct_t>::into(ctx.adaptor, key, data);
-                }
-            } else {
-                serde_adaptor<Adaptor, std::remove_reference_t<T>>::into(ctx.adaptor, key, data);
-            }
-            ctx.read();
-        }
-    };
 
     namespace attribute {
         namespace detail {
@@ -253,8 +84,8 @@ namespace serde
       T t = deserialize<T>(Adaptor, key)
      */
     template <typename T, class Adaptor>
-    constexpr inline T deserialize(Adaptor&& adaptor, std::string_view key="") {
-        using origin = meta::remove_cvref_t<Adaptor>;
+    inline T deserialize(Adaptor&& adaptor, std::string_view key) {
+        using origin = detail::remove_cvref_t<Adaptor>;
         T target;
         if constexpr(std::is_pointer_v<T>) { target = nullptr; }
         serde_context<origin> ctx(adaptor);
@@ -268,8 +99,8 @@ namespace serde
       deserialize_to(Adaptor, T, key)
      */
     template<typename T, class Adaptor>
-    constexpr inline void deserialize_to(Adaptor&& adaptor, T& target, std::string_view key="") {
-        using origin = meta::remove_cvref_t<Adaptor>;
+    inline void deserialize_to(Adaptor&& adaptor, T& target, std::string_view key) {
+        using origin = detail::remove_cvref_t<Adaptor>;
         serde_context<origin> ctx(adaptor);
         serde_serializer<T, serde_context<origin>>::from(ctx, target, key);
     }
@@ -280,8 +111,8 @@ namespace serde
       Adaptor adaptor = serialize<Adaptor>(T, key)
      */
     template<class Adaptor, typename T>
-    constexpr inline Adaptor serialize(T&& target, std::string_view key="") {
-        using origin = meta::remove_cvref_t<T>;
+    inline Adaptor serialize(T&& target, std::string_view key) {
+        using origin = detail::remove_cvref_t<T>;
         Adaptor adaptor;
         serde_context<Adaptor, true> ctx(adaptor);
         serde_serializer<origin, serde_context<Adaptor,true>>::into(ctx, target, key);
@@ -293,9 +124,9 @@ namespace serde
       T -> Adaptor[key] or T -> Adaptor
       serialize_to(T, Adaptor, key)
      */
-    template<class Adaptor, typename T, typename U = meta::remove_cvref_t<T>>
-    constexpr inline void serialize_to(T&& target, Adaptor& adaptor, std::string_view key="") {
-        using origin = meta::remove_cvref_t<T>;
+    template<class Adaptor, typename T>
+    inline void serialize_to(T&& target, Adaptor& adaptor, std::string_view key) {
+        using origin = detail::remove_cvref_t<T>;
         serde_context<Adaptor, true> ctx(adaptor);
         serde_serializer<origin, serde_context<Adaptor, true>>::into(ctx, target, key);
     }
@@ -319,17 +150,17 @@ namespace serde
         inline constexpr auto field(MEM_PTR&& ptr, std::string_view name,
                                              Attribute&& attribute, Attributes&&... attributes) {
             using rtype = std::remove_reference_t<decltype(std::invoke(ptr, value_))>;
-            using type_tuple = meta::tuple_extend_t<rtype, Tuple>;
+            using type_tuple = detail::tuple_extend_t<rtype, Tuple>;
             if(context_.skip_all_) return serde_struct<Context, T, type_tuple>(context_, value_);
             if constexpr(!Context::is_serialize) {
                 attribute.template from<rtype, Context>(context_, value_.*ptr, name,
-                                                        std::forward<meta::remove_cvref_t<Attributes>>
-                                                        (const_cast<meta::remove_cvref_t<Attributes>&>(attributes))...,
+                                                        std::forward<detail::remove_cvref_t<Attributes>>
+                                                        (const_cast<detail::remove_cvref_t<Attributes>&>(attributes))...,
                                                         attribute::detail::serializer_call_attr{});
             } else {
                 attribute.template into<rtype, Context>(context_, value_.*ptr, name,
-                                                        std::forward<meta::remove_cvref_t<Attributes>>
-                                                        (const_cast<meta::remove_cvref_t<Attributes>&>(attributes))...,
+                                                        std::forward<detail::remove_cvref_t<Attributes>>
+                                                        (const_cast<detail::remove_cvref_t<Attributes>&>(attributes))...,
                                                         attribute::detail::serializer_call_attr{});
             }
             return serde_struct<Context, T, type_tuple>(context_, value_);
@@ -338,7 +169,7 @@ namespace serde
         template<class MEM_PTR>
         inline constexpr auto field(MEM_PTR&& ptr, std::string_view name) {
             using rtype = std::remove_reference_t<decltype(std::invoke(ptr, value_))>;
-            using type_tuple = meta::tuple_extend_t<rtype, Tuple>;
+            using type_tuple = detail::tuple_extend_t<rtype, Tuple>;
             if(context_.skip_all_) return serde_struct<Context, T, type_tuple>(context_, value_);
             if constexpr(!Context::is_serialize) {
                 serde::serde_serializer<rtype, Context>::from(context_, value_.*ptr, name);
@@ -370,7 +201,7 @@ namespace serde
         template<class MEM_PTR>
         inline constexpr auto operator()(MEM_PTR&& ptr, std::string_view name) {
             using rtype = std::remove_reference_t<decltype(std::invoke(ptr, value_))>;
-            using type_tuple = meta::tuple_extend_t<rtype, Tuple>;
+            using type_tuple = detail::tuple_extend_t<rtype, Tuple>;
             if(context_.skip_all_) return serde_struct<Context, T, type_tuple>(context_, value_);
             if constexpr(!Context::is_serialize) {
                 serde::serde_serializer<rtype, Context>::from(context_, value_.*ptr, name);
@@ -384,17 +215,17 @@ namespace serde
         inline constexpr auto operator()(MEM_PTR&& ptr, std::string_view name,
                                                   Attribute&& attribute, Attributes&&... attributes) {
             using rtype = std::remove_reference_t<decltype(std::invoke(ptr, value_))>;
-            using type_tuple = meta::tuple_extend_t<rtype, Tuple>;
+            using type_tuple = detail::tuple_extend_t<rtype, Tuple>;
             if(context_.skip_all_) return serde_struct<Context, T, type_tuple>(context_, value_);
             if constexpr(!Context::is_serialize) {
                 attribute.template from<rtype, Context>(context_, value_.*ptr, name,
-                                                        std::forward<meta::remove_cvref_t<Attributes>>
-                                                        (const_cast<meta::remove_cvref_t<Attributes>&>(attributes))...,
+                                                        std::forward<detail::remove_cvref_t<Attributes>>
+                                                        (const_cast<detail::remove_cvref_t<Attributes>&>(attributes))...,
                                                         attribute::serializer_call);
             } else {
                 attribute.template into<rtype, Context>(context_, value_.*ptr, name,
-                                                        std::forward<meta::remove_cvref_t<Attributes>>
-                                                        (const_cast<meta::remove_cvref_t<Attributes>&>(attributes))...,
+                                                        std::forward<detail::remove_cvref_t<Attributes>>
+                                                        (const_cast<detail::remove_cvref_t<Attributes>&>(attributes))...,
                                                         attribute::serializer_call);
             }
             return serde_struct<Context, T, type_tuple>(context_, value_);
@@ -406,13 +237,13 @@ namespace serde
             if(context_.skip_all_) return *this;
             if constexpr(!Context::is_serialize) {
                 attribute.template from<T, Context>(context_, value_, "",
-                                                    std::forward<meta::remove_cvref_t<Attributes>>
-                                                    (const_cast<meta::remove_cvref_t<Attributes>&>(attributes))...,
+                                                    std::forward<detail::remove_cvref_t<Attributes>>
+                                                    (const_cast<detail::remove_cvref_t<Attributes>&>(attributes))...,
                                                     attribute::pass);
             } else {
                 attribute.template into<T, Context>(context_, value_, "",
-                                                    std::forward<meta::remove_cvref_t<Attributes>>
-                                                    (const_cast<meta::remove_cvref_t<Attributes>&>(attributes))...,
+                                                    std::forward<detail::remove_cvref_t<Attributes>>
+                                                    (const_cast<detail::remove_cvref_t<Attributes>&>(attributes))...,
                                                     attribute::pass);
             }
             return *this;
@@ -465,44 +296,44 @@ namespace serde
     };
 
     template<typename T, typename serde_ctx>
-    struct serde_serializer<T, serde_ctx, std::enable_if_t<is_mappable_v<T> &&
-                                                           is_emptyable_v<T> >> {
+    struct serde_serializer<T, serde_ctx, std::enable_if_t<detail::is_mappable_v<T> &&
+                                                           detail::is_emptyable_v<T>>> {
         constexpr inline static auto from(serde_ctx& ctx, T& data, std::string_view key) {
-            serde_adaptor<typename serde_ctx::Adaptor, T, type::map_t>::from(ctx.adaptor, key, data);
+            serde_adaptor<typename serde_ctx::Adaptor, T, detail::map_t>::from(ctx.adaptor, key, data);
             ctx.read();
         }
         constexpr inline static auto into(serde_ctx& ctx, const T& data, std::string_view key) {
-            serde_adaptor<typename serde_ctx::Adaptor, T, type::map_t>::into(ctx.adaptor, key, data);
+            serde_adaptor<typename serde_ctx::Adaptor, T, detail::map_t>::into(ctx.adaptor, key, data);
             ctx.read();
         }
     };
 
     template<typename T, typename serde_ctx>
-    struct serde_serializer<T, serde_ctx, std::enable_if_t<is_sequenceable_v<T> &&
-                                                           is_emptyable_v<T> &&
-                                                           !is_str_v<T>  >>{
+    struct serde_serializer<T, serde_ctx, std::enable_if_t<detail::is_sequenceable_v<T> &&
+                                                           detail::is_emptyable_v<T> &&
+                                                           !detail::is_str_v<T>>>{
         constexpr inline static auto from(serde_ctx& ctx, T& data, std::string_view key) {
-            serde_adaptor<typename serde_ctx::Adaptor, T, type::seq_t>::from(ctx.adaptor, key, data);
+            serde_adaptor<typename serde_ctx::Adaptor, T, detail::seq_t>::from(ctx.adaptor, key, data);
             ctx.read();
         }
 
         constexpr inline static auto into(serde_ctx& ctx, const T& data, std::string_view key) {
-            serde_adaptor<typename serde_ctx::Adaptor, T, type::seq_t>::into(ctx.adaptor, key, data);
+            serde_adaptor<typename serde_ctx::Adaptor, T, detail::seq_t>::into(ctx.adaptor, key, data);
             ctx.read();
         }
     };
 
 
     template<typename T, typename serde_ctx>
-    struct serde_serializer<T, serde_ctx, std::enable_if_t<is_enumable_v<T>>>{
+    struct serde_serializer<T, serde_ctx, std::enable_if_t<detail::is_enumable_v<T>>>{
         inline static auto from(serde_ctx& ctx, T& data, std::string_view key) {
             std::string str_to_enum;
             serde_adaptor<typename serde_ctx::Adaptor, std::string>::from(ctx.adaptor, key, str_to_enum);
-            data = type::enum_t::from_str<T>(str_to_enum);
+            data = detail::enum_t::from_str<T>(str_to_enum);
             ctx.read();
         }
         inline static auto into(serde_ctx& ctx, const T& data, std::string_view key) {
-            auto enum_to_str = std::string{type::enum_t::to_str(data)};
+            auto enum_to_str = std::string{detail::enum_t::to_str(data)};
             serde_adaptor<typename serde_ctx::Adaptor, std::string>::into(ctx.adaptor, key, enum_to_str);
             ctx.read();
         }
@@ -521,33 +352,21 @@ namespace serde
         ENUM
     };
 
-    template<typename Format, typename=void>
-    struct serde_type_checker {
-        static bool is_integer(Format& format)  { return true; }
-        static bool is_sequence(Format& format) { return true; }
-        static bool is_map(Format& format)      { return true; }
-        static bool is_float(Format& format)    { return true; }
-        static bool is_string(Format& format)   { return true; }
-        static bool is_bool(Format& format)     { return true; }
-        static bool is_null(Format& format)     { return true; }
-        static bool is_struct(Format& format)   { return true; }
-    };
-
     template<class T>
     constexpr SERDE_TYPE serde_type_declare() {
-             if constexpr(meta::is_str_v<T>)          return SERDE_TYPE::STRING;
-        else if constexpr(meta::is_sequenceable_v<T>) return SERDE_TYPE::SEQUENCE;
-        else if constexpr(meta::is_mappable_v<T>)     return SERDE_TYPE::MAP;
-        else if constexpr(meta::is_enumable_v<T>)     return SERDE_TYPE::ENUM;
-        else if constexpr(type::is_struct_v<T>)       return SERDE_TYPE::STRUCT;
-        else if constexpr(std::is_same_v<int16_t, T>) return SERDE_TYPE::INTEGER;
-        else if constexpr(std::is_same_v<int8_t, T>)  return SERDE_TYPE::INTEGER;
-        else if constexpr(std::is_same_v<int32_t, T>) return SERDE_TYPE::INTEGER;
-        else if constexpr(std::is_same_v<int64_t, T>) return SERDE_TYPE::INTEGER;
-        else if constexpr(std::is_same_v<bool, T>)    return SERDE_TYPE::BOOL;
-        else if constexpr(std::is_same_v<float, T>)   return SERDE_TYPE::FLOAT;
-        else if constexpr(std::is_same_v<double, T>)  return SERDE_TYPE::FLOAT;
-        else                                          return SERDE_TYPE::UNKNOWN;
+             if constexpr(detail::is_str_v<T>)          return SERDE_TYPE::STRING;
+        else if constexpr(detail::is_sequenceable_v<T>) return SERDE_TYPE::SEQUENCE;
+        else if constexpr(detail::is_mappable_v<T>)     return SERDE_TYPE::MAP;
+        else if constexpr(detail::is_enumable_v<T>)     return SERDE_TYPE::ENUM;
+        else if constexpr(detail::is_struct_v<T>)       return SERDE_TYPE::STRUCT;
+        else if constexpr(std::is_same_v<int16_t, T>)   return SERDE_TYPE::INTEGER;
+        else if constexpr(std::is_same_v<int8_t, T>)    return SERDE_TYPE::INTEGER;
+        else if constexpr(std::is_same_v<int32_t, T>)   return SERDE_TYPE::INTEGER;
+        else if constexpr(std::is_same_v<int64_t, T>)   return SERDE_TYPE::INTEGER;
+        else if constexpr(std::is_same_v<bool, T>)      return SERDE_TYPE::BOOL;
+        else if constexpr(std::is_same_v<float, T>)     return SERDE_TYPE::FLOAT;
+        else if constexpr(std::is_same_v<double, T>)    return SERDE_TYPE::FLOAT;
+        else                                            return SERDE_TYPE::UNKNOWN;
     }
 
     template<class Format, class T, class V>
@@ -605,8 +424,8 @@ namespace serde
     }
 
     template<typename T, typename serde_ctx>
-    struct serde_serializer<T, serde_ctx, std::enable_if_t<is_optional_v<T>>> {
-        using value_type = type::opt_e<std::remove_reference_t<T>>;
+    struct serde_serializer<T, serde_ctx, std::enable_if_t<detail::is_optional_v<T>>> {
+        using value_type = detail::opt_e<std::remove_reference_t<T>>;
         using Adaptor = typename serde_ctx::Adaptor;
         using Helper = serde_adaptor_helper<Adaptor>;
         constexpr inline static auto from(serde_ctx& ctx, T& data, std::string_view key) {
@@ -625,10 +444,10 @@ namespace serde
     };
 
     template<typename T, typename serde_ctx>
-    struct serde_serializer<T, serde_ctx, std::enable_if_t<is_pointer_v<T>>> {
+    struct serde_serializer<T, serde_ctx, std::enable_if_t<detail::is_pointer_v<T>>> {
         using Adaptor = typename serde_ctx::Adaptor;
         using Helper = serde_adaptor_helper<Adaptor>;
-        using ptr_helper = is_pointer<T>;
+        using ptr_helper = detail::is_pointer<T>;
         constexpr inline static auto from(serde_ctx& ctx, T& data, std::string_view key) {
             if(key.empty() && serde_type_checker<Adaptor>::is_null(ctx.adaptor)) {
                 if(!data) data = ptr_helper::null_type;
@@ -647,13 +466,13 @@ namespace serde
 
     template<typename T, class Context=serde_context<detail::dummy_adaptor, true>, typename=void>
     struct to_tuple {
-        using origin = meta::remove_cvref_t<T>;
+        using origin = detail::remove_cvref_t<T>;
         using type = T;
     };
 
     template<typename T>
-    struct to_tuple<T, serde_context<detail::dummy_adaptor, true>, std::enable_if_t<type::is_struct_v<T>>>{
-        using origin = meta::remove_cvref_t<T>;
+    struct to_tuple<T, serde_context<detail::dummy_adaptor, true>, std::enable_if_t<detail::is_struct_v<T>>>{
+        using origin = detail::remove_cvref_t<T>;
         using Context = serde_context<detail::dummy_adaptor, true>;
         using type = typename decltype(std::declval<T>().template
                                     /*auto*/ serde<Context>(/*Context& ctx)*/
@@ -673,5 +492,6 @@ namespace serde
     template<class T> [[maybe_unused]] constexpr static size_t tuple_size_v = tuple_size<T>::value;
 } // namespace serde
 
+#include "serdepp/extend/rttr.hpp"
 
 #endif

@@ -23,7 +23,7 @@ namespace serde {
 namespace serde {
 
     template <>
-    struct serde_adaptor<rapidjson_value, rttr::variant, type::basic_t> {
+    struct serde_adaptor<rapidjson_value, rttr::variant, detail::basic_t> {
         using ValueType = rttr::variant;
         inline static void from(rapidjson_value& s, std::string_view key, ValueType& data) {
             ValueType val;
@@ -53,7 +53,7 @@ namespace serde {
         inline static void into(rapidjson_value& s, std::string_view key, const ValueType& orig_data) {
             const rttr::type orig_data_type = orig_data.get_type();
             rttr::variant wrapped_val = orig_data_type.is_wrapper() 
-                    ? orig_data.extract_wrapped_value() : orig_data;
+                    ? orig_data.extract_wrapped_ptr_value() : orig_data;
             const rttr::type wrapped_type = wrapped_val.get_type();
             rttr::variant data = wrapped_type.is_pointer() 
                     ? wrapped_val.extract_pointer_value() : wrapped_val;
@@ -129,7 +129,7 @@ namespace serde {
 namespace serde {
 
     template <>
-    struct serde_adaptor<rapidjson_type, rttr::variant, type::basic_t> {
+    struct serde_adaptor<rapidjson_type, rttr::variant, detail::basic_t> {
         using ValueType = rttr::variant;
         inline static void from(rapidjson_type& s, std::string_view key, ValueType& data) {
             auto& avalue = key.empty() ? s : s[key.data()];
@@ -160,7 +160,7 @@ namespace serde {
         inline static void into(rapidjson_type& s, std::string_view key, const ValueType& orig_data) {
             const rttr::type orig_data_type = orig_data.get_type();
             rttr::variant wrapped_val = orig_data_type.is_wrapper() 
-                    ? orig_data.extract_wrapped_value() : orig_data;
+                    ? orig_data.extract_wrapped_ptr_value() : orig_data;
             const rttr::type wrapped_type = wrapped_val.get_type();
             rttr::variant data = wrapped_type.is_pointer() 
                     ? wrapped_val.extract_pointer_value() : wrapped_val;
@@ -235,7 +235,7 @@ namespace serde {
     };
 
     template <>
-    struct serde_adaptor<rapidjson_type, rttr::variant_polymoph_view, type::poly_t> {
+    struct serde_adaptor<rapidjson_type, rttr::variant_polymoph_view, detail::poly_t> {
         using Container = rttr::variant_polymoph_view;
         using E = rttr::variant;
         inline static void from(rapidjson_type& s, std::string_view key, Container& container) {
@@ -261,7 +261,7 @@ namespace serde {
             Value map;
             map.SetObject();
             {
-                std::string type_name = data.get_type_name();
+                std::string type_name = data.get_real_type().get_name().to_string();
                 Value v(type_name.c_str(), type_name.length(), alloc);
                 map.AddMember("$typeName", v.Move(), alloc);
             }
@@ -281,7 +281,7 @@ namespace serde {
     };
 
     template <>
-    struct serde_adaptor<rapidjson_type, rttr::variant_sequential_view, type::seq_t> {
+    struct serde_adaptor<rapidjson_type, rttr::variant_sequential_view, detail::seq_t> {
         using Sequent = rttr::variant_sequential_view;
         using E = rttr::variant;
         inline static void from(rapidjson_type& s, std::string_view key, Sequent& seq) {
@@ -295,7 +295,7 @@ namespace serde {
                 E orig_value = seq.get_value(i);
                 rttr::type value_type1 = orig_value.get_type();
                 E value = orig_value.get_type().is_wrapper() 
-                        ? orig_value.extract_wrapped_value() : orig_value;
+                        ? orig_value.extract_wrapped_ptr_value() : orig_value;
                 rttr::type value_type = value.get_type();
 
                 deserialize_to(avalue, value);
@@ -324,14 +324,14 @@ namespace serde {
     };
 
     template <>
-    struct serde_adaptor<rapidjson_type, rttr::variant_associative_view, type::map_t> {
+    struct serde_adaptor<rapidjson_type, rttr::variant_associative_view, detail::map_t> {
         using Map = rttr::variant_associative_view;
         using E = rttr::variant;
         inline static void from(rapidjson_type& s, std::string_view key, Map& map) {
             auto& table = key.empty() ? s : s[key.data()];
             if (map.is_key_only_type()) {
                 const rttr::type orig_key_type = map.get_key_type();
-                if (serde_rttr_type_checker::is_basic(orig_key_type)) {
+                if (detail::rttr_type_is_basic(orig_key_type)) {
                     for (size_t i=0; i<table.Size(); i++) {
                         auto& avalue = table[i];
                         E key;
@@ -348,7 +348,7 @@ namespace serde {
                         auto& avalue = table[i];
                         E orig_key = orig_key_type.create();
                         E key = orig_key.get_type().get_raw_type().is_wrapper() 
-                                ? orig_key.extract_wrapped_value() : orig_key;
+                                ? orig_key.extract_wrapped_ptr_value() : orig_key;
                         deserialize_to(avalue, key);
                         if (key.get_type() != orig_key_type) {
                             if (!key.convert(orig_key_type)) {
@@ -362,8 +362,8 @@ namespace serde {
                 const rttr::type orig_key_type = map.get_key_type();
                 const rttr::type orig_value_type = map.get_value_type();
 
-                if (serde_rttr_type_checker::is_basic(orig_key_type)) {
-                    if (serde_rttr_type_checker::is_basic(orig_value_type)) {
+                if (detail::rttr_type_is_basic(orig_key_type)) {
+                    if (detail::rttr_type_is_basic(orig_value_type)) {
                         for(auto& [akey, avalue] : table.GetObject()) {
                             E key;
                             deserialize_to(akey, key);
@@ -390,7 +390,7 @@ namespace serde {
                             E orig_value = orig_value_type.create();
                             rttr::type value_type1 = orig_value.get_type();
                             E value = orig_value.get_type().is_wrapper() 
-                                    ? orig_value.extract_wrapped_value() : orig_value;
+                                    ? orig_value.extract_wrapped_ptr_value() : orig_value;
                             rttr::type value_type = value.get_type();
                             deserialize_to(avalue, value);
                             if (key.get_type() != orig_key_type) {
@@ -408,11 +408,11 @@ namespace serde {
                     }
                 }
                 else {
-                    if (serde_rttr_type_checker::is_basic(orig_value_type)) {
+                    if (detail::rttr_type_is_basic(orig_value_type)) {
                         for(auto& avalue : table.GetArray()) {
                             E orig_key = orig_key_type.create(); 
                             E key = orig_key.get_type().get_raw_type().is_wrapper() 
-                                    ? orig_key.extract_wrapped_value() : orig_key;
+                                    ? orig_key.extract_wrapped_ptr_value() : orig_key;
                                     
                             E value;
                             deserialize_to(avalue["key"], key);
@@ -433,10 +433,10 @@ namespace serde {
                         for(auto& avalue : table.GetArray()) {
                             E orig_key = orig_key_type.create(); 
                             E key = orig_key.get_type().get_raw_type().is_wrapper() 
-                                    ? orig_key.extract_wrapped_value() : orig_key;
+                                    ? orig_key.extract_wrapped_ptr_value() : orig_key;
                             E orig_value = orig_value_type.create();
                             E value = orig_value.get_type().get_raw_type().is_wrapper() 
-                                    ? orig_value.extract_wrapped_value() : orig_value;
+                                    ? orig_value.extract_wrapped_ptr_value() : orig_value;
                             deserialize_to(avalue["key"], key);
                             deserialize_to(avalue["value"], value);
                             if (key.get_type() != orig_key_type) {
@@ -469,10 +469,14 @@ namespace serde {
                 }
             } else {
                 auto key_type = data.get_key_type();
-                if (key_type.is_arithmetic() || key_type.is_enumeration() || key_type == rttr::type::get<std::string>()) {
+                if (detail::rttr_type_is_basic(key_type.get_raw_type())) {
                     map.SetObject();
                     for(auto& [it_key, it_value] : data) {
-                        std::string str_key = it_key.to_string();
+                        bool ok = false;
+                        std::string str_key = it_key.to_string(&ok);
+                        if (!ok) {
+                            continue;
+                        }
                         Value skey(str_key.c_str(), str_key.length(), alloc);
                         Value v;
                         v.CopyFrom(serialize<rapidjson_type>(it_value), alloc);
@@ -509,7 +513,7 @@ namespace serde {
     };
 
     template<>
-    struct serde_adaptor<rapidjson_type, rttr::variant, type::struct_t> {
+    struct serde_adaptor<rapidjson_type, rttr::variant, detail::struct_t> {
         using Object = rttr::variant;
         static void from(rapidjson_type& s, std::string_view key, Object& orig_data) {
             rttr::type orig_type = orig_data.get_type();
@@ -564,7 +568,7 @@ namespace serde {
 namespace serde {
 
     template <>
-    struct serde_adaptor<rapidjson_value, rttr::variant_polymoph_view, type::poly_t> {
+    struct serde_adaptor<rapidjson_value, rttr::variant_polymoph_view, detail::poly_t> {
         using Container = rttr::variant_polymoph_view;
         using E = rttr::variant;
         inline static void from(rapidjson_value& s, std::string_view key, Container& container) {
@@ -586,7 +590,7 @@ namespace serde {
     };
 
     template <>
-    struct serde_adaptor<rapidjson_value, rttr::variant_sequential_view, type::seq_t> {
+    struct serde_adaptor<rapidjson_value, rttr::variant_sequential_view, detail::seq_t> {
         using Sequent = rttr::variant_sequential_view;
         using E = rttr::variant;
         inline static void from(rapidjson_value& s, std::string_view key, Sequent& seq) {
@@ -600,7 +604,7 @@ namespace serde {
                 E orig_value = seq.get_value(i);
                 rttr::type value_type1 = orig_value.get_type();
                 E value = orig_value.get_type().is_wrapper() 
-                        ? orig_value.extract_wrapped_value() : orig_value;
+                        ? orig_value.extract_wrapped_ptr_value() : orig_value;
                 rttr::type value_type = value.get_type();
 
                 deserialize_to(avalue, value);
@@ -611,14 +615,14 @@ namespace serde {
     };
 
     template <>
-    struct serde_adaptor<rapidjson_value, rttr::variant_associative_view, type::map_t> {
+    struct serde_adaptor<rapidjson_value, rttr::variant_associative_view, detail::map_t> {
         using Map = rttr::variant_associative_view;
         using E = rttr::variant;
         inline static void from(rapidjson_value& s, std::string_view key, Map& map) {
             auto& table = key.empty() ? s : s[key.data()];
             if (map.is_key_only_type()) {
                 const rttr::type orig_key_type = map.get_key_type();
-                if (serde_rttr_type_checker::is_basic(orig_key_type)) {
+                if (detail::rttr_type_is_basic(orig_key_type)) {
                     for (size_t i=0; i<table.Size(); i++) {
                         auto& avalue = table[i];
                         E key;
@@ -635,7 +639,7 @@ namespace serde {
                         auto& avalue = table[i];
                         E orig_key = orig_key_type.create();
                         E key = orig_key.get_type().get_raw_type().is_wrapper() 
-                                ? orig_key.extract_wrapped_value() : orig_key;
+                                ? orig_key.extract_wrapped_ptr_value() : orig_key;
                         deserialize_to(avalue, key);
                         if (key.get_type() != orig_key_type) {
                             if (!key.convert(orig_key_type)) {
@@ -650,8 +654,8 @@ namespace serde {
                 const rttr::type orig_value_type = map.get_value_type();
 
                 bool ok = false;
-                if (serde_rttr_type_checker::is_basic(orig_key_type)) {
-                    if (serde_rttr_type_checker::is_basic(orig_value_type)) {
+                if (detail::rttr_type_is_basic(orig_key_type)) {
+                    if (detail::rttr_type_is_basic(orig_value_type)) {
                         for(auto& [jkey, avalue] : table.GetObject()) {
 
                             E key;
@@ -681,7 +685,7 @@ namespace serde {
                             E orig_value = orig_value_type.create();
                             rttr::type value_type1 = orig_value.get_type();
                             E value = orig_value.get_type().is_wrapper() 
-                                    ? orig_value.extract_wrapped_value() : orig_value;
+                                    ? orig_value.extract_wrapped_ptr_value() : orig_value;
                             rttr::type value_type = value.get_type();
                             deserialize_to(avalue, value);
                             if (key.get_type() != orig_key_type) {
@@ -699,11 +703,11 @@ namespace serde {
                     }
                 }
                 else {
-                    if (serde_rttr_type_checker::is_basic(orig_value_type)) {
+                    if (detail::rttr_type_is_basic(orig_value_type)) {
                         for(auto& avalue : table.GetArray()) {
                             E orig_key = orig_key_type.create(); 
                             E key = orig_key.get_type().get_raw_type().is_wrapper() 
-                                    ? orig_key.extract_wrapped_value() : orig_key;
+                                    ? orig_key.extract_wrapped_ptr_value() : orig_key;
                             auto key_type = key.get_type();
 
                             E value;
@@ -725,11 +729,11 @@ namespace serde {
                         for(auto& avalue : table.GetArray()) {
                             E orig_key = orig_key_type.create(); 
                             E key = orig_key.get_type().get_raw_type().is_wrapper() 
-                                    ? orig_key.extract_wrapped_value() : orig_key;
+                                    ? orig_key.extract_wrapped_ptr_value() : orig_key;
                             auto key_type = key.get_type();
                             E orig_value = orig_value_type.create();
                             E value = orig_value.get_type().get_raw_type().is_wrapper() 
-                                    ? orig_value.extract_wrapped_value() : orig_value;
+                                    ? orig_value.extract_wrapped_ptr_value() : orig_value;
                             deserialize_to(avalue["key"], key);
                             deserialize_to(avalue["value"], value);
                             if (key.get_type() != orig_key_type) {
@@ -751,7 +755,7 @@ namespace serde {
     };
 
     template<>
-    struct serde_adaptor<rapidjson_value, rttr::variant, type::struct_t> {
+    struct serde_adaptor<rapidjson_value, rttr::variant, detail::struct_t> {
         using Object = rttr::variant;
         static void from(rapidjson_value& s, std::string_view key, Object& orig_data) {
             rttr::type orig_type = orig_data.get_type();

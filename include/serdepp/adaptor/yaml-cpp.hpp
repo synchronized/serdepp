@@ -7,6 +7,15 @@
 #include "serdepp/serializer.hpp"
 
 namespace serde {
+    std::string to_string(YAML::Node& doc) {
+        YAML::Emitter emitter;
+        // 3. Emit the Node to the Emitter
+        emitter << doc;
+        return emitter.c_str();
+    }
+}
+
+namespace serde {
     using yaml = YAML::Node;
 
     template<> struct serde_type_checker<YAML::Node> {
@@ -56,7 +65,7 @@ namespace serde {
     };
 
     template<typename T>
-    struct serde_adaptor<yaml, T, type::struct_t> {
+    struct serde_adaptor<yaml, T, detail::struct_t> {
         static void from(yaml& s, std::string_view key, T& data) {
             deserialize_to(s[std::string{key}], data);
         }
@@ -66,15 +75,15 @@ namespace serde {
     };
 
     template<typename T>
-    struct serde_adaptor<yaml, T, type::seq_t> {
-       using E = type::seq_e<T>;
+    struct serde_adaptor<yaml, T, detail::seq_t> {
+       using E = detail::seq_e<T>;
        inline static void from(yaml& s, std::string_view key, T& arr) {
            if(key.empty()) {
-               if constexpr(is_arrayable_v<T>) arr.reserve(s.size());
+               if constexpr(detail::is_reserveable_v<T>) arr.reserve(s.size());
                for(std::size_t i = 0 ; i < s.size(); ++i) { arr.push_back(deserialize<E>(s[i])); }
            } else {
                auto table = s[std::string{key}];
-               if constexpr(is_arrayable_v<T>) arr.reserve(table.size());
+               if constexpr(detail::is_reserveable_v<T>) arr.reserve(table.size());
                for(std::size_t i = 0 ; i < table.size(); ++i) { arr.push_back(deserialize<E>(table[i])); }
            }
        }
@@ -90,8 +99,8 @@ namespace serde {
 
 
     template <typename Map>
-    struct serde_adaptor<yaml, Map, type::map_t> {
-        using E = type::map_e<Map>;
+    struct serde_adaptor<yaml, Map, detail::map_t> {
+        using E = detail::map_e<Map>;
         inline static void from(yaml& s, std::string_view key, Map& map) {
             if(key.empty()) {
                 for(yaml::const_iterator it = s.begin(); it!=s.end(); ++it) {
@@ -121,5 +130,6 @@ namespace serde {
     };
 }
 
+#include "serdepp/extend/rttr/yaml-cpp.hpp"
 
 #endif

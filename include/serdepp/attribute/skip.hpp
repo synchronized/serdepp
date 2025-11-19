@@ -47,10 +47,10 @@ namespace serde::attribute {
             inline void from(serde_ctx& ctx, T& data, std::string_view key,
                              Next&& next_attr, Attributes&&... remains) const{
                 using Helper = serde_adaptor_helper<typename serde_ctx::Adaptor>;
-                if constexpr (meta::is_optional_v<T>) {
+                if constexpr (serde::detail::is_optional_v<T>) {
                     if (Helper::is_null(ctx.adaptor, key)) return;
                     if(!data) data.emplace();
-                    next_attr.template from<type::opt_e<std::remove_reference_t<T>>, serde_ctx>
+                    next_attr.template from<serde::detail::opt_e<std::remove_reference_t<T>>, serde_ctx>
                         (ctx, *data, key, remains...);
                 } else {
                     next_attr.from(ctx, data, key, remains...);
@@ -60,8 +60,8 @@ namespace serde::attribute {
             template<typename T, typename serde_ctx, typename Next, typename ...Attributes>
             inline void into(serde_ctx& ctx, T& data, std::string_view key,
                              Next&& next_attr, Attributes&&... remains) const{
-                if constexpr (meta::is_optional_v<T>) {
-                    if(data) next_attr.template into<type::opt_e<std::remove_reference_t<T>>, serde_ctx>
+                if constexpr (serde::detail::is_optional_v<T>) {
+                    if(data) next_attr.template into<serde::detail::opt_e<std::remove_reference_t<T>>, serde_ctx>
                                  (ctx, *data, key, remains...);
                 } else {
                     next_attr.into(ctx, data, key, remains...);
