@@ -14,7 +14,7 @@ target_link_libraries(${TARGET_NAME} PRIVATE RapidJSON)
 target_link_libraries(${TARGET_NAME} PRIVATE toml11::toml11)
 target_link_libraries(${TARGET_NAME} PRIVATE yaml-cpp::yaml-cpp)
 set_target_properties(${TARGET_NAME} PROPERTIES 
-                        FOLDER "Serdepp/Testing")
+                        FOLDER "Testing")
 
 add_test(NAME ${TARGET_NAME}_test
          COMMAND ${TARGET_NAME}

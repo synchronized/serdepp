@@ -15,8 +15,7 @@ foreach(file_full_name ${benchmarksourcelist})
     target_link_libraries(${TARGET_NAME} PRIVATE RapidJSON)
     target_link_libraries(${TARGET_NAME} PRIVATE toml11::toml11)
     target_link_libraries(${TARGET_NAME} PRIVATE yaml-cpp::yaml-cpp)
-    set_target_properties(${TARGET_NAME} PROPERTIES 
-                            FOLDER "Serdepp/benchmark")
+    set_target_properties(${TARGET_NAME} PROPERTIES FOLDER "Benchmark")
     set(TARGET_NAME "")
 
 endforeach()

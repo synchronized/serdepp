@@ -19,8 +19,8 @@ foreach(file_full_name ${examplesourcelist})
     target_link_libraries(${TARGET_NAME} PRIVATE toml11::toml11)
     target_link_libraries(${TARGET_NAME} PRIVATE yaml-cpp::yaml-cpp)
     target_link_libraries(${TARGET_NAME} PRIVATE fmt::fmt-header-only)
-    set_target_properties(${TARGET_NAME} PROPERTIES 
-                            FOLDER "Serdepp/Examples")
+    set_target_properties(${TARGET_NAME} PROPERTIES FOLDER "Examples")
+
     if(MSVC)
         #target_compile_options(${TARGET_NAME} PRIVATE "/bigobj")
     endif()

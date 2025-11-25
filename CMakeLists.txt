@@ -46,8 +46,7 @@ target_link_libraries(${TARGET_NAME} PUBLIC magic_enum::magic_enum)
 target_link_libraries(${TARGET_NAME} PUBLIC nameof::nameof)
 target_link_libraries(${TARGET_NAME} PUBLIC fmt::fmt-header-only)
 target_link_libraries(${TARGET_NAME} PUBLIC RTTR::Core)
-set_target_properties(${TARGET_NAME} PROPERTIES 
-                      FOLDER "Serdepp/Core")
+set_target_properties(${TARGET_NAME} PROPERTIES FOLDER "Core")
 set(TARGET_NAME "")
 
 
