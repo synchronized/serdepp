@@ -37,19 +37,9 @@ endif()
 
 if(NOT TARGET fmt::fmt-header-only)
     set(FMT_ROOT_DIR "${THIRD_PARTY_ROOT}/fmt-v12.1.0")
-    add_library(fmt-header-only INTERFACE)
-    add_library(fmt::fmt-header-only ALIAS fmt-header-only)
-    target_include_directories(fmt-header-only INTERFACE ${FMT_ROOT_DIR}/include)
+    add_subdirectory(${FMT_ROOT_DIR})
 
-    if (NOT MSVC)
-    # Unicode is always supported on compilers other than MSVC.
-    elseif (FMT_UNICODE)
-        # Unicode support requires compiling with /utf-8.
-        target_compile_options(fmt-header-only INTERFACE $<$<AND:$<COMPILE_LANGUAGE:CXX>,$<CXX_COMPILER_ID:MSVC>>:/utf-8>)
-    endif ()
-
-    target_compile_definitions(fmt-header-only INTERFACE FMT_HEADER_ONLY=1)
-    target_compile_features(fmt-header-only INTERFACE cxx_std_11)
+    set_target_properties(fmt PROPERTIES FOLDER "${third_party_folder}/fmt")
     set_target_properties(fmt-header-only PROPERTIES FOLDER "${third_party_folder}/fmt")
 endif()
 

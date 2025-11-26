@@ -1,4 +1,5 @@
 build/
 .vscode
 .ccls-cache
+*.patch
 compile_commands.json
