@@ -22,7 +22,7 @@ foreach(file_full_name ${examplesourcelist})
     set_target_properties(${TARGET_NAME} PROPERTIES FOLDER "Examples")
 
     if(MSVC)
-        #target_compile_options(${TARGET_NAME} PRIVATE "/bigobj")
+        target_compile_options(${TARGET_NAME} PRIVATE "/bigobj")
     endif()
 
     # 将MySharedLib的DLL复制到MyApp的输出目录

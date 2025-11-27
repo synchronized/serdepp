@@ -139,55 +139,40 @@
     },
 
     {
-      "name": "4.---------- vcpkg配置 ----------",
+      "name": "4.---------- 操作系统/平台 ----------",
       "hidden": true
     },
     {
-      "name": "vcpkg-default",
-      "hidden": true
-    },
-    {
-      "name": "vcpkg-overlay-triplets",
-      "hidden": true
-    },
-    {
-      "name": "vcpkg-windows-msvc",
-      "hidden": true,
+      "name": "linux-clang-debug",
+      "displayName": "Linux clang debug",
       "inherits": [
-        "vcpkg-default"
+        "use-clang",
+        "debug-build"
       ]
     },
     {
-      "name": "vcpkg-windows-clang",
-      "hidden": true,
+      "name": "linux-clang-release",
+      "displayName": "Linux clang release",
       "inherits": [
-        "vcpkg-overlay-triplets"
-      ],
-      "cacheVariables": {
-        "VCPKG_TARGET_TRIPLET": "x64-windows-clang"
-      }
-    },
-    {
-      "name": "vcpkg-linux-gcc",
-      "hidden": true,
-      "inherits": [
-        "vcpkg-default"
+        "use-clang",
+        "release-build"
       ]
     },
     {
-      "name": "vcpkg-linux-clang",
-      "hidden": true,
+      "name": "linux-gcc-debug",
+      "displayName": "Linux gcc debug",
       "inherits": [
-        "vcpkg-overlay-triplets"
-      ],
-      "cacheVariables": {
-        "VCPKG_TARGET_TRIPLET": "x64-linux-clang"
-      }
+        "use-gcc",
+        "debug-build"
+      ]
     },
-
     {
-      "name": "5.---------- 操作系统/平台 ----------",
-      "hidden": true
+      "name": "linux-gcc-release",
+      "displayName": "Linux gcc release",
+      "inherits": [
+        "use-gcc",
+        "release-build"
+      ]
     },
 
     {
@@ -218,33 +203,12 @@
       }
     },
     {
-      "name": "windows-clang-debug",
-      "displayName": "Windows x64 clang debug",
-      "inherits": [
-        "windows-default",
-        "use-clang",
-        "debug-build",
-        "vcpkg-windows-clang"
-      ]
-    },
-    {
-      "name": "windows-clang-release",
-      "displayName": "Windows x64 clang release",
-      "inherits": [
-        "windows-default",
-        "use-clang",
-        "release-build",
-        "vcpkg-windows-clang"
-      ]
-    },
-    {
       "name": "windows-msvc-debug",
       "displayName": "Windows x64 msvc debug",
       "inherits": [
         "windows-default",
         "use-msvc-cl",
-        "debug-build",
-        "vcpkg-windows-msvc"
+        "debug-build"
       ]
     },
     {
@@ -253,57 +217,47 @@
       "inherits": [
         "windows-default",
         "use-msvc-cl",
-        "release-build",
-        "vcpkg-windows-msvc"
+        "release-build"
       ]
     },
-
     {
-      "name": "linux-clang-debug",
-      "displayName": "Linux clang debug",
+      "name": "windows-clang-cl-debug",
+      "displayName": "Windows x64 clang-cl debug",
       "inherits": [
+        "windows-default",
+        "use-msvc-clang-cl",
+        "debug-build"
+      ]
+    },
+    {
+      "name": "windows-clang-cl-release",
+      "displayName": "Windows x64 clang-cl release",
+      "inherits": [
+        "windows-default",
+        "use-msvc-clang-cl",
+        "release-build"
+      ]
+    },
+    {
+      "name": "windows-clang-debug",
+      "displayName": "Windows x64 clang debug",
+      "inherits": [
+        "windows-default",
         "use-clang",
-        "debug-build",
-        "vcpkg-linux-clang"
+        "debug-build"
       ]
     },
     {
-      "name": "linux-clang-release",
-      "displayName": "Linux clang release",
+      "name": "windows-clang-release",
+      "displayName": "Windows x64 clang release",
       "inherits": [
+        "windows-default",
         "use-clang",
-        "release-build",
-        "vcpkg-linux-clang"
-      ]
-    },
-    {
-      "name": "linux-gcc-debug",
-      "displayName": "Linux gcc debug",
-      "inherits": [
-        "use-gcc",
-        "debug-build",
-        "vcpkg-linux-gcc"
-      ]
-    },
-    {
-      "name": "linux-gcc-release",
-      "displayName": "Linux gcc release",
-      "inherits": [
-        "use-gcc",
-        "release-build",
-        "vcpkg-linux-gcc"
+        "release-build"
       ]
     }
   ],
   "buildPresets": [
-    {
-      "name": "windows-clang-debug",
-      "configurePreset": "windows-clang-debug"
-    },
-    {
-      "name": "windows-clang-release",
-      "configurePreset": "windows-clang-release"
-    },
     {
       "name": "windows-msvc-debug",
       "configurePreset": "windows-msvc-debug"
@@ -311,6 +265,22 @@
     {
       "name": "windows-msvc-release",
       "configurePreset": "windows-msvc-release"
+    },
+    {
+      "name": "windows-clang-cl-debug",
+      "configurePreset": "windows-clang-cl-debug"
+    },
+    {
+      "name": "windows-clang-cl-release",
+      "configurePreset": "windows-clang-cl-release"
+    },
+    {
+      "name": "windows-clang-debug",
+      "configurePreset": "windows-clang-debug"
+    },
+    {
+      "name": "windows-clang-release",
+      "configurePreset": "windows-clang-release"
     },
     {
       "name": "linux-clang-debug",
@@ -331,26 +301,49 @@
   ],
   "testPresets": [
     {
-      "name": "default-unit-test",
+      "name": "test-default",
       "hidden": true,
-      "filter": {
-        "include": {
-          "label": "serdepp_unit"
-        }
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error",
+        "stopOnFailure": false
       }
     },
     {
-      "name": "unit-test-windows-clang-debug",
-      "configurePreset": "windows-clang-debug",
+      "name": "windows-msvc-debug",
+      "configurePreset": "windows-msvc-debug",
       "inherits": [
-        "default-unit-test"
+        "test-default"
       ]
     },
     {
-      "name": "unit-test-linux-clang-debug",
+      "name": "windows-clang-cl-debug",
+      "configurePreset": "windows-clang-cl-debug",
+      "inherits": [
+        "test-default"
+      ]
+    },
+    {
+      "name": "windows-clang-debug",
+      "configurePreset": "windows-clang-debug",
+      "inherits": [
+        "test-default"
+      ]
+    },
+    {
+      "name": "linux-clang-debug",
       "configurePreset": "linux-clang-debug",
       "inherits": [
-        "default-unit-test"
+        "test-default"
+      ]
+    },
+    {
+      "name": "linux-gcc-debug",
+      "configurePreset": "linux-gcc-debug",
+      "inherits": [
+        "test-default"
       ]
     }
   ]
