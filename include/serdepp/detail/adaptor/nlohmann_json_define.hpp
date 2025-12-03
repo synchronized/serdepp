@@ -6,7 +6,6 @@
 #define JSON_HAS_CPP_17 // nlohmann_json string_view support macro
 
 #include <fstream>
-#include <variant>
 
 #include <nlohmann/json.hpp>
 
@@ -43,13 +42,6 @@ struct serde_adaptor<nlohmann::json, T>  {
     using json = nlohmann::json;
     constexpr static void from(json& s, std::string_view key, T& data);
     constexpr static void into(json& s, std::string_view key, const T& data);
-};
-
-template<typename... T>
-struct serde_adaptor<nlohmann::json, std::variant<T...>>  {
-    using json = nlohmann::json;
-    constexpr static void from(json& s, std::string_view key, std::variant<T...>& data);
-    constexpr static void into(json& s, std::string_view key, const std::variant<T...>& data);
 };
 
 template<typename T>

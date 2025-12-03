@@ -40,21 +40,6 @@ constexpr void serde_adaptor<YAML::Node, T>::into(yaml& s, std::string_view key,
     if(key.empty()) { s = data; } else { s[key.data()] = data; }
 }
 
-// --------------- serde_adaptor<YAML::Node, std::variant<T...>> ---------------
-template<typename... T>
-void serde_adaptor<YAML::Node, std::variant<T...>>::from(yaml& s, std::string_view key, std::variant<T...>& data) {
-    if(key.empty()) {
-        serde_variant_iter<yaml, std::variant<T...>, T...>(s, data);
-    } else {
-        auto map = s[std::string{key}];
-        serde_variant_iter<yaml, std::variant<T...>, T...>(map, data);
-    }
-}
-template<typename... T>
-constexpr void serde_adaptor<YAML::Node, std::variant<T...>>::into(yaml& s, std::string_view key, const std::variant<T...>& data) {
-    std::visit([&](auto& type){ serialize_to<yaml>(type, s, key); }, data);
-}
-
 // --------------- serde_adaptor<YAML::Node, T, detail::struct_t> ---------------
 template<typename T>
 void serde_adaptor<YAML::Node, T, detail::struct_t>::from(yaml& s, std::string_view key, T& data) {

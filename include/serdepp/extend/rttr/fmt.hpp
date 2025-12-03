@@ -1,21 +1,16 @@
 #pragma once
 
+#ifndef __SERDEPP_EXTEND_RTTR_FMT_DEFINE_HPP__
+#define __SERDEPP_EXTEND_RTTR_FMT_DEFINE_HPP__
+
 #include <rttr/type>
 
-template <>
-struct fmt::formatter<rttr::variant, char> : fmt::formatter<std::string> {
-  template <typename FormatCtx>
-  auto format(const rttr::variant &serde_type, FormatCtx &ctx) const {
-    return fmt::formatter<std::string>::format(serde::to_string(serde_type),
-                                               ctx);
-  }
-};
-//
-// template<>
-// struct fmt::formatter<serde::serde_sstream> : fmt::formatter<std::string> {
-//    template <typename FormatCtx>
-//    auto format(const serde::serde_sstream& serde_type, FormatCtx& ctx) {
-//        return fmt::formatter<std::string>::format(serde_type.str(), ctx);
-//    }
-//};
+#include "serdepp/serializer.hpp"
+#include "serdepp/extend/rttr.hpp"
+#include "serdepp/detail/adaptor/fmt_define.hpp"
+#include "serdepp/detail/adaptor/fmt_impl.hpp"
 
+#include "serdepp/detail/extend/rttr/fmt_define.hpp"
+#include "serdepp/detail/extend/rttr/fmt_impl.hpp"
+
+#endif

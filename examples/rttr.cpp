@@ -2,11 +2,11 @@
 #include <rttr/registration>
 #include <rttr/type>
 
-#include <serdepp/adaptor/fmt.hpp>
-#include <serdepp/adaptor/nlohmann_json.hpp>
-#include <serdepp/adaptor/rapidjson.hpp>
-#include <serdepp/adaptor/toml11.hpp>
-#include <serdepp/adaptor/yaml-cpp.hpp>
+#include <serdepp/extend/rttr/fmt.hpp>
+#include <serdepp/extend/rttr/nlohmann_json.hpp>
+#include <serdepp/extend/rttr/rapidjson.hpp>
+#include <serdepp/extend/rttr/toml11.hpp>
+#include <serdepp/extend/rttr/yaml-cpp.hpp>
 
 #include <string>
 #include <vector>

@@ -84,13 +84,6 @@ struct serde_adaptor<rapidjson::Document, std::string>  {
     static void into(rapidjson_type& s, std::string_view key, const std::string& data);
 };
 
-template<typename... T>
-struct serde_adaptor<rapidjson::Document, std::variant<T...>>  {
-    using rapidjson_type = rapidjson::Document;
-    constexpr static void from(rapidjson_type& s, std::string_view key, std::variant<T...>& data);
-    constexpr static void into(rapidjson_type& s, std::string_view key, const std::variant<T...>& data);
-};
-
 template<typename T>
 struct serde_adaptor<rapidjson::Document, T, detail::struct_t> {
     using rapidjson_type = rapidjson::Document;

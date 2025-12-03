@@ -31,13 +31,6 @@ struct serde_adaptor_helper<toml::value>: derive_serde_adaptor_helper<toml::valu
     static toml_v parse_file(const std::string& path);
 };
 
-template<typename... T>
-struct serde_adaptor<toml::value, std::variant<T...>>  {
-    using toml_v = toml::value;
-    constexpr static void from(toml_v& s, std::string_view key, std::variant<T...>& data);
-    constexpr static void into(toml_v& s, std::string_view key, const std::variant<T...>& data);
-};
-
 template<typename T> 
 struct serde_adaptor<toml::value, T, detail::struct_t> {
     using toml_v = toml::value;

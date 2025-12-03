@@ -6,6 +6,5 @@
 #include "serdepp/serializer.hpp"
 #include "serdepp/detail/adaptor/fmt_define.hpp"
 #include "serdepp/detail/adaptor/fmt_impl.hpp"
-#include "serdepp/extend/rttr/fmt.hpp"
 
 #endif

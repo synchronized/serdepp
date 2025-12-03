@@ -6,6 +6,5 @@
 #include "serdepp/serializer.hpp"
 #include "serdepp/detail/adaptor/nlohmann_json_define.hpp"
 #include "serdepp/detail/adaptor/nlohmann_json_impl.hpp"
-#include "serdepp/extend/rttr/nlohmann_json.hpp"
 
 #endif

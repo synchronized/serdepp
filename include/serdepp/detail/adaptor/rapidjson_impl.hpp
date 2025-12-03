@@ -69,7 +69,7 @@ bool serde_adaptor_helper<rapidjson::Value>::is_struct(rapidjson::Value& adaptor
 
 // --------------- serde_adaptor<rapidjson::Document, T> ---------------
 template<typename T>
-constexpr static void serde_adaptor<rapidjson::Document, T>::from(rapidjson_type& s, std::string_view key, T& data) {
+constexpr void serde_adaptor<rapidjson::Document, T>::from(rapidjson_type& s, std::string_view key, T& data) {
     data = key.empty() ? s.Get<T>() : s[key.data()].Get<T>(); 
 }
 
@@ -110,20 +110,6 @@ void serde_adaptor<rapidjson::Document, std::string>::into(rapidjson_type& s, st
         buf.SetString(data.c_str(), data.length(), s.GetAllocator());
         s.AddMember(rapidjson::StringRef(key.data()), buf.Move(), s.GetAllocator());
     }
-}
-
-// --------------- serde_adaptor<rapidjson::Document, std::variant<T...>> ---------------
-template<typename... T>
-constexpr void serde_adaptor<rapidjson::Document, std::variant<T...>>::from(rapidjson_type& s, std::string_view key, std::variant<T...>& data) {
-    if(key.empty()) {
-        serde_variant_iter<rapidjson_type, std::variant<T...>, T...>(s, data);
-    } else {
-        serde_variant_iter<rapidjson::Value, std::variant<T...>, T...>(s[key.data()], data);
-    }
-}
-template<typename... T>
-constexpr void serde_adaptor<rapidjson::Document, std::variant<T...>>::into(rapidjson_type& s, std::string_view key, const std::variant<T...>& data) {
-    std::visit([&](auto& type){ serialize_to<rapidjson_type>(type, s, key); }, data);
 }
 
 // --------------- serde_adaptor<rapidjson::Document, T, detail::struct_t> ---------------

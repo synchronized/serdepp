@@ -39,13 +39,6 @@ struct serde_adaptor<YAML::Node, T>  {
     constexpr static void into(yaml& s, std::string_view key, const T& data);
 };
 
-template<typename... T>
-struct serde_adaptor<YAML::Node, std::variant<T...>>  {
-    using yaml = YAML::Node;
-    static void from(yaml& s, std::string_view key, std::variant<T...>& data);
-    constexpr static void into(yaml& s, std::string_view key, const std::variant<T...>& data);
-};
-
 template<typename T>
 struct serde_adaptor<YAML::Node, T, detail::struct_t> {
     using yaml = YAML::Node;

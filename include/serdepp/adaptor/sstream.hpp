@@ -6,6 +6,5 @@
 #include "serdepp/serializer.hpp"
 #include "serdepp/detail/adaptor/sstream_define.hpp"
 #include "serdepp/detail/adaptor/sstream_impl.hpp"
-#include "serdepp/extend/rttr/sstream.hpp"
 
 #endif

@@ -43,12 +43,6 @@ struct serde_adaptor<serde_sstream, T, detail::struct_t> {
     static void into(serde_sstream &s, std::string_view key, const T& data);
 };
 
-template<typename... T>
-struct serde_adaptor<serde_sstream, std::variant<T...>>  {
-    constexpr static void from(serde_sstream& s, std::string_view key, std::variant<T...>& data);
-    constexpr static void into(serde_sstream& s, std::string_view key, const std::variant<T...>& data);
-};
-
 template<typename T> 
 struct serde_adaptor<serde_sstream, T, detail::seq_t> {
     static void from(serde_sstream& s, std::string_view key, T& arr);

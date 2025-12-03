@@ -64,16 +64,6 @@ void serde_adaptor<serde_sstream, T, detail::struct_t>::into(serde_sstream &s, s
     s.add(serialize<serde_sstream>(data).str(), key);
 } 
 
-// --------------- serde_adaptor<serde_sstream, std::variant<T...>> ---------------
-template<typename... T>
-inline constexpr void serde_adaptor<serde_sstream, std::variant<T...>>::from(serde_sstream& s, std::string_view key, std::variant<T...>& data) {
-    throw serde::unimplemented_error("serde_adaptor<{}>::from(serde_sstream, key data)");
-}
-template<typename... T>
-inline constexpr void serde_adaptor<serde_sstream, std::variant<T...>>::into(serde_sstream& s, std::string_view key, const std::variant<T...>& data) {
-    std::visit([&](auto& type){ serialize_to(type, s, key); }, data);
-}
-
 // --------------- struct serde_adaptor<serde_sstream, T, detail::seq_t> ---------------
 template<typename T> 
 void serde_adaptor<serde_sstream, T, detail::seq_t>::from(serde_sstream& s, std::string_view key, T& arr) {

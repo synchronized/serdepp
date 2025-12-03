@@ -33,20 +33,6 @@ toml::value serde_adaptor_helper<toml::value>::parse_file(const std::string& pat
     return toml::parse(path); 
 }
 
-// --------------- serde_adaptor<toml::value, std::variant<T...>> ---------------
-template<typename... T>
-constexpr void serde_adaptor<toml::value, std::variant<T...>>::from(toml_v& s, std::string_view key, std::variant<T...>& data) {
-    if(key.empty()) {
-        serde_variant_iter<toml_v, std::variant<T...>, T...>(s, data);
-    } else {
-        serde_variant_iter<toml_v, std::variant<T...>, T...>(toml::find(s, std::string{key}), data);
-    }
-}
-template<typename... T>
-constexpr void serde_adaptor<toml::value, std::variant<T...>>::into(toml_v& s, std::string_view key, const std::variant<T...>& data) {
-    std::visit([&](auto& type){ serialize_to<toml_v>(type, s, key); }, data);
-}
-
 // --------------- struct serde_adaptor<toml::value, T, detail::struct_t> ---------------
 template<typename T> 
 void serde_adaptor<toml::value, T, detail::struct_t>::from(toml_v& s, std::string_view key, T& data) {

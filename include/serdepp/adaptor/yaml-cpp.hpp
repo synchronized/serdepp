@@ -6,6 +6,5 @@
 #include "serdepp/serializer.hpp"
 #include "serdepp/detail/adaptor/yaml-cpp_define.hpp"
 #include "serdepp/detail/adaptor/yaml-cpp_impl.hpp"
-#include "serdepp/extend/rttr/yaml-cpp.hpp"
 
 #endif

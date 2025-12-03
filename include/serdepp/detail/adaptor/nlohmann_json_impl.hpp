@@ -51,20 +51,6 @@ constexpr void serde_adaptor<nlohmann::json, T>::into(nlohmann::json& s, std::st
 }
 
 // --------------- serde_adaptor<nlohmann::json, std::variant<T...>> ---------------
-template<typename... T>
-constexpr void serde_adaptor<nlohmann::json, std::variant<T...>>::from(nlohmann::json& s, std::string_view key, std::variant<T...>& data) {
-    if(key.empty()) {
-        serde_variant_iter<json, std::variant<T...>, T...>(s, data);
-    } else {
-        serde_variant_iter<json, std::variant<T...>, T...>(s[std::string{key}], data);
-    }
-}
-template<typename... T>
-constexpr void serde_adaptor<nlohmann::json, std::variant<T...>>::into(nlohmann::json& s, std::string_view key, const std::variant<T...>& data) {
-    std::visit([&](auto& type){ serialize_to<json>(type, s, key); }, data);
-}
-
-// --------------- serde_adaptor<nlohmann::json, std::variant<T...>> ---------------
 template<typename T>
 void serde_adaptor<nlohmann::json, T, detail::struct_t>::from(nlohmann::json& s, std::string_view key, T& data) {
     deserialize_to(s[std::string{key}], data);

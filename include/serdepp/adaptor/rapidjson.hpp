@@ -6,6 +6,5 @@
 #include "serdepp/serializer.hpp"
 #include "serdepp/detail/adaptor/rapidjson_define.hpp"
 #include "serdepp/detail/adaptor/rapidjson_impl.hpp"
-#include "serdepp/extend/rttr/rapidjson.hpp"
 
 #endif

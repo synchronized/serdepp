@@ -125,8 +125,10 @@ namespace serde
 
 
 
-        template <class T> using is_struct = detail::is_serdeable<serde_context<detail::dummy_adaptor>, T>;
-        template <class T> inline constexpr auto is_struct_v = is_struct<T>::value;
+        template <class T> 
+        using is_struct = detail::is_serdeable<serde_context<detail::dummy_adaptor>, T>;
+        template <class T> 
+        inline constexpr auto is_struct_v = is_struct<T>::value;
     }
 }
 
